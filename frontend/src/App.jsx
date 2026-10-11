@@ -4,6 +4,7 @@ import HealthPage from './pages/HealthPage';
 import EventsPage from './pages/EventsPage';
 import IncidentsPage from './pages/IncidentsPage';
 import MLPredictionsPage from './pages/MLPredictionsPage';
+import ThreatIntelPage from './pages/ThreatIntelPage';
 import { fetchHealthStatus } from './services/api';
 
 export default function App() {
@@ -59,6 +60,7 @@ export default function App() {
           <IncidentsPage onIncidentCountChange={setOpenIncidentsCount} />
         )}
         {currentTab === 'ml' && <MLPredictionsPage />}
+        {currentTab === 'threat-intel' && <ThreatIntelPage />}
         {currentTab === 'events' && <EventsPage />}
         {currentTab === 'health' && (
           <HealthPage
@@ -76,7 +78,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="soc-footer">
-        SentinelAI SOC — AI-Powered Security Operations Center • Phase 4 ML Anomaly Detection Active
+        SentinelAI SOC — AI-Powered Security Operations Center • Phase 5 Threat Intelligence Active
       </footer>
     </div>
   );

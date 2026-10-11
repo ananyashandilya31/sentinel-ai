@@ -18,6 +18,7 @@ from backend.schemas.incident import (
 from backend.schemas.log import LogResponse
 from backend.detection.base import DetectedAlert
 from backend.detection.engine import default_engine
+from backend.services.threat_intel_service import enrich_incident_ips
 
 
 def process_alerts(db: Session, alerts: List[DetectedAlert]) -> List[Incident]:
@@ -215,6 +216,8 @@ def get_incident_by_id(db: Session, incident_id: str) -> Optional[IncidentDetail
         for al in incident.alerts
     ]
 
+    threat_intel_responses = enrich_incident_ips(db, incident.id)
+
     return IncidentDetailResponse(
         id=incident.id,
         title=incident.title,
@@ -228,6 +231,7 @@ def get_incident_by_id(db: Session, incident_id: str) -> Optional[IncidentDetail
         alerts_count=len(incident.alerts),
         alerts=alert_responses,
         evidence=evidence_responses,
+        threat_intel=threat_intel_responses,
     )
 
 

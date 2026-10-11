@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Activity, FileText, AlertOctagon, BrainCircuit } from 'lucide-react';
+import { Shield, Activity, FileText, AlertOctagon, BrainCircuit, ShieldAlert } from 'lucide-react';
 
 export default function Navbar({ currentTab, onSelectTab, systemStatus, openIncidentsCount = 0 }) {
   const { isApiOnline, isDbConnected } = systemStatus;
@@ -44,6 +44,13 @@ export default function Navbar({ currentTab, onSelectTab, systemStatus, openInci
         >
           <BrainCircuit size={16} />
           <span>ML Anomalies</span>
+        </button>
+        <button
+          className={`nav-tab-btn ${currentTab === 'threat-intel' ? 'active' : ''}`}
+          onClick={() => onSelectTab('threat-intel')}
+        >
+          <ShieldAlert size={16} />
+          <span>Threat Intel</span>
         </button>
         <button
           className={`nav-tab-btn ${currentTab === 'events' ? 'active' : ''}`}

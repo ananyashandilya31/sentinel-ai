@@ -34,4 +34,21 @@ __all__ = [
     "IncidentDetailResponse",
     "IncidentUpdate",
     "PaginatedIncidentsResponse",
+    "IPReputationBase",
+    "IPReputationCreate",
+    "IPReputationUpdate",
+    "IPReputationResponse",
+    "PaginatedIPReputationResponse",
+    "IPBatchLookupRequest",
+    "IPBatchLookupResponse",
 ]
+
+from .threat_intel import (
+    IPReputationBase,
+    IPReputationCreate,
+    IPReputationUpdate,
+    IPReputationResponse,
+    PaginatedIPReputationResponse,
+    IPBatchLookupRequest,
+    IPBatchLookupResponse,
+)

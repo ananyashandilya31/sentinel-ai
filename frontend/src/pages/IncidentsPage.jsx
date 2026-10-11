@@ -21,6 +21,8 @@ import {
 import SeverityBadge from '../components/SeverityBadge';
 import StatusBadge from '../components/StatusBadge';
 import EventTypeBadge from '../components/EventTypeBadge';
+import ReputationBadge from '../components/ReputationBadge';
+import RiskScoreGauge from '../components/RiskScoreGauge';
 
 export default function IncidentsPage({ onIncidentCountChange }) {
   const [incidents, setIncidents] = useState([]);
@@ -449,6 +451,53 @@ export default function IncidentsPage({ onIncidentCountChange }) {
                   </div>
                 </div>
               </div>
+
+              {/* Threat Intelligence Context */}
+              {selectedIncident.threat_intel && selectedIncident.threat_intel.length > 0 && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <ShieldAlert size={16} color="#f85149" />
+                    Threat Intelligence Context ({selectedIncident.threat_intel.length})
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {selectedIncident.threat_intel.map((ti) => (
+                      <div
+                        key={ti.ip}
+                        style={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                          border: '1px solid #30363d',
+                          borderRadius: '6px',
+                          padding: '0.75rem',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#58a6ff' }}>{ti.ip}</span>
+                            <ReputationBadge reputation={ti.reputation} />
+                            {ti.is_tor && (
+                              <span style={{ fontSize: '10px', backgroundColor: '#6e40c9', color: '#fff', padding: '1px 5px', borderRadius: '3px' }}>
+                                Tor Exit
+                              </span>
+                            )}
+                            {ti.is_vpn && (
+                              <span style={{ fontSize: '10px', backgroundColor: '#1f6feb', color: '#fff', padding: '1px 5px', borderRadius: '3px' }}>
+                                VPN
+                              </span>
+                            )}
+                          </div>
+                          <RiskScoreGauge score={ti.risk_score} />
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.75rem', color: '#8b949e' }}>
+                          <span><strong>Geo:</strong> {ti.country || 'Unknown'} {ti.city ? `(${ti.city})` : ''}</span>
+                          <span><strong>ISP:</strong> {ti.isp || 'N/A'}</span>
+                          <span><strong>ASN:</strong> {ti.asn || 'N/A'}</span>
+                          <span><strong>Threats:</strong> {ti.threat_types && ti.threat_types.length > 0 ? ti.threat_types.join(', ') : 'None'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Triggered Alerts Section */}
               <div style={{ marginBottom: '1.5rem' }}>

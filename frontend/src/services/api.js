@@ -308,3 +308,93 @@ export async function fetchMLPredictions({
     throw error;
   }
 }
+
+/**
+ * Calls GET /api/v1/threat-intel with pagination, filters, and search.
+ */
+export async function fetchThreatIntel({
+  page = 1,
+  pageSize = 20,
+  reputation = '',
+  minRisk = '',
+  search = '',
+} = {}) {
+  try {
+    const params = new URLSearchParams();
+    params.set('page', page);
+    params.set('page_size', pageSize);
+    if (reputation) params.set('reputation', reputation);
+    if (minRisk !== '' && minRisk !== null) params.set('min_risk', minRisk);
+    if (search) params.set('search', search);
+
+    const response = await fetch(`${API_BASE_URL}/api/v1/threat-intel?${params.toString()}`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch threat intel (HTTP ${response.status})`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching threat intel:', error);
+    throw error;
+  }
+}
+
+/**
+ * Calls GET /api/v1/threat-intel/{ip} for single IP lookup & dynamic enrichment.
+ */
+export async function lookupIPReputation(ip) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/threat-intel/${encodeURIComponent(ip)}`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`Error looking up IP ${ip}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Calls POST /api/v1/threat-intel/seed to seed threat intelligence database.
+ */
+export async function seedThreatIntel(overwrite = false) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/threat-intel/seed?overwrite=${overwrite}`, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to seed threat intel (HTTP ${response.status})`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error seeding threat intel:', error);
+    throw error;
+  }
+}
+
+/**
+ * Calls GET /api/v1/threat-intel/incident/{incidentId}
+ */
+export async function fetchIncidentThreatIntel(incidentId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/threat-intel/incident/${incidentId}`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch incident threat intel (HTTP ${response.status})`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`Error fetching incident threat intel for ${incidentId}:`, error);
+    throw error;
+  }
+}

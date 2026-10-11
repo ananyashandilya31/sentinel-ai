@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from backend.schemas.log import LogResponse
+from backend.schemas.threat_intel import IPReputationResponse
 
 
 class Severity(str, Enum):
@@ -72,9 +73,10 @@ class IncidentResponse(BaseModel):
 
 
 class IncidentDetailResponse(IncidentResponse):
-    """Comprehensive incident view including linked alerts and evidence logs."""
+    """Comprehensive incident view including linked alerts, evidence logs, and threat intelligence context."""
     alerts: List[AlertResponse] = []
     evidence: List[EvidenceResponse] = []
+    threat_intel: List[IPReputationResponse] = []
 
     model_config = {"from_attributes": True}
 
