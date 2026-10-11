@@ -28,6 +28,7 @@ class Incident(Base):
     # Relationships
     alerts = relationship("Alert", back_populates="incident", cascade="all, delete-orphan")
     evidence = relationship("Evidence", back_populates="incident", cascade="all, delete-orphan")
+    investigations = relationship("Investigation", back_populates="incident", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Incident id={self.id} type={self.type} severity={self.severity} status={self.status}>"

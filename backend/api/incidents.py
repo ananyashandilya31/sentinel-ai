@@ -12,7 +12,9 @@ from backend.schemas.incident import (
     IncidentStatus,
     IncidentType,
 )
+from backend.schemas.investigation import InvestigationResponse, InvestigationRequest
 from backend.services import incident_service
+from backend.services.investigation_service import investigate_incident, get_latest_investigation
 
 router = APIRouter(prefix="/incidents", tags=["Incidents & Detection"])
 
@@ -91,3 +93,52 @@ def evaluate_detection(
         "alerts_triggered": alert_count,
         "message": f"Detection engine executed. Triggered {alert_count} alerts.",
     }
+
+
+@router.post(
+    "/{incident_id}/investigate",
+    response_model=InvestigationResponse,
+    summary="Trigger AI Incident Investigation (GenAI)",
+)
+def run_investigation(
+    incident_id: str,
+    payload: Optional[InvestigationRequest] = None,
+    force_refresh: bool = Query(False, description="Whether to regenerate analysis bypassing cache"),
+    db: Session = Depends(get_db),
+) -> InvestigationResponse:
+    """
+    Triggers AI-powered incident investigation.
+    Extracts structured evidence (logs, timeline, IP reputation, ML scores),
+    invokes the LLM / expert SOC synthesis engine, and persists the analysis.
+    """
+    should_refresh = force_refresh or (payload.force_refresh if payload else False)
+    try:
+        return investigate_incident(db, incident_id=incident_id, force_refresh=should_refresh)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Investigation failed: {exc}",
+        ) from exc
+
+
+@router.get(
+    "/{incident_id}/investigation",
+    response_model=InvestigationResponse,
+    summary="Get Existing AI Incident Investigation",
+)
+def get_incident_investigation(
+    incident_id: str,
+    db: Session = Depends(get_db),
+) -> InvestigationResponse:
+    """
+    Retrieves the latest stored AI investigation report for the specified incident.
+    """
+    inv = get_latest_investigation(db, incident_id=incident_id)
+    if not inv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No investigation report found for incident '{incident_id}'. Call POST /incidents/{incident_id}/investigate first.",
+        )
+    return inv

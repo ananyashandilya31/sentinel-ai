@@ -398,3 +398,50 @@ export async function fetchIncidentThreatIntel(incidentId) {
     throw error;
   }
 }
+
+/**
+ * Calls POST /api/v1/incidents/{incidentId}/investigate
+ * Triggers AI incident investigation and analysis.
+ */
+export async function triggerInvestigation(incidentId, forceRefresh = false) {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/incidents/${incidentId}/investigate?force_refresh=${forceRefresh}`,
+      {
+        method: 'POST',
+        headers: { 'Accept': 'application/json' },
+      }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`Error triggering investigation for ${incidentId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Calls GET /api/v1/incidents/{incidentId}/investigation
+ */
+export async function fetchInvestigation(incidentId) {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/incidents/${incidentId}/investigation`,
+      {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      }
+    );
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`Error fetching investigation for ${incidentId}:`, error);
+    throw error;
+  }
+}

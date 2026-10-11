@@ -11,18 +11,21 @@ import {
   FileSearch,
   ExternalLink,
   Flame,
+  Sparkles,
 } from 'lucide-react';
 import {
   fetchIncidents,
   fetchIncidentById,
   updateIncidentStatus,
   evaluateDetection,
+  triggerInvestigation,
 } from '../services/api';
 import SeverityBadge from '../components/SeverityBadge';
 import StatusBadge from '../components/StatusBadge';
 import EventTypeBadge from '../components/EventTypeBadge';
 import ReputationBadge from '../components/ReputationBadge';
 import RiskScoreGauge from '../components/RiskScoreGauge';
+import AIInvestigationCard from '../components/AIInvestigationCard';
 
 export default function IncidentsPage({ onIncidentCountChange }) {
   const [incidents, setIncidents] = useState([]);
@@ -44,6 +47,20 @@ export default function IncidentsPage({ onIncidentCountChange }) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [assigneeInput, setAssigneeInput] = useState('');
+  const [investigating, setInvestigating] = useState(false);
+
+  const handleInvestigate = async (forceRefresh = false) => {
+    if (!selectedIncident) return;
+    setInvestigating(true);
+    try {
+      const inv = await triggerInvestigation(selectedIncident.id, forceRefresh);
+      setSelectedIncident((prev) => (prev ? { ...prev, investigation: inv } : null));
+    } catch (err) {
+      alert(`AI Investigation failed: ${err.message}`);
+    } finally {
+      setInvestigating(false);
+    }
+  };
 
   const loadIncidents = useCallback(async () => {
     setLoading(true);
@@ -451,6 +468,71 @@ export default function IncidentsPage({ onIncidentCountChange }) {
                   </div>
                 </div>
               </div>
+
+              {/* AI Investigation Section */}
+              {selectedIncident.investigation ? (
+                <AIInvestigationCard
+                  investigation={selectedIncident.investigation}
+                  onReinvestigate={() => handleInvestigate(true)}
+                  loading={investigating}
+                />
+              ) : (
+                <div
+                  style={{
+                    backgroundColor: '#161b22',
+                    border: '1px dashed #388bfd60',
+                    borderRadius: '8px',
+                    padding: '1rem',
+                    marginBottom: '1.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '0.75rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <div
+                      style={{
+                        padding: '6px',
+                        borderRadius: '6px',
+                        backgroundColor: 'rgba(56, 189, 248, 0.15)',
+                      }}
+                    >
+                      <Sparkles size={18} color="#38bdf8" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#f0f6fc' }}>
+                        AI Incident Investigation Assistant
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#8b949e' }}>
+                        Generate a comprehensive Tier 3 SOC triage summary, evidence explanation, and mitigation checklist.
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    className="action-btn"
+                    onClick={() => handleInvestigate(false)}
+                    disabled={investigating}
+                    style={{
+                      backgroundColor: '#1f6feb',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '6px 14px',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Sparkles size={14} className={investigating ? 'spin' : ''} />
+                    {investigating ? 'Analyzing with AI...' : 'Investigate with AI'}
+                  </button>
+                </div>
+              )}
 
               {/* Threat Intelligence Context */}
               {selectedIncident.threat_intel && selectedIncident.threat_intel.length > 0 && (
