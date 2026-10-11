@@ -1,7 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from backend.config import settings
 from backend.api import api_router
+from backend.api.ws import handle_alert_websocket
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -21,6 +22,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount root WebSocket endpoint for real-time alerting
+@app.websocket("/ws/alerts")
+async def root_websocket_alerts(websocket: WebSocket):
+    await handle_alert_websocket(websocket)
 
 # Mount versioned API routes
 app.include_router(api_router)

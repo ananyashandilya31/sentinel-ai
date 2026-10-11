@@ -2,7 +2,7 @@
 
 > A real-time cybersecurity platform that ingests server/network logs, detects known attacks with rule-based logic, finds unknown/unusual behaviour with machine learning, enriches suspicious IPs with threat intelligence, and uses an LLM to explain incidents to security analysts.
 
-**Status:** 🚧 In development — Phase 6: AI Incident Investigation (GenAI) Completed ✅ (30-day build plan)
+**Status:** 🚧 In development — Phase 7: Real-Time SOC Completed ✅ (30-day build plan)
 **Type:** Full-stack + Machine Learning + Generative AI project
 
 ---
@@ -360,10 +360,11 @@ Recommended investigation:
 
 ## 12. Real-Time Alerting
 
-- FastAPI **WebSocket endpoint** keeps a connection open with each dashboard.
-- When a new incident is created, the server **broadcasts** it instantly.
+- FastAPI **WebSocket endpoint** keeps a connection open with each dashboard (`GET /ws/alerts`, also mounted at `/api/v1/ws/alerts`).
+- When a new incident is created or updated, the server **broadcasts** it instantly (`NEW_INCIDENT` / `INCIDENT_UPDATED` events) — broadcasts are scheduled onto the app's event loop via `run_coroutine_threadsafe` so they work from sync endpoints too.
 - The React app updates counters, the incident list and shows a notification, with no page refresh.
-- Connection handling: authentication on connect, auto-reconnect on the client.
+- Connection handling: heartbeat ping/PONG, automatic reconnection with exponential backoff (1s → 30s), per-connection state tracking (`LIVE` / `CONNECTING` / `RECONNECTING` / `OFFLINE`).
+- Reproduce the flow: open the Dashboard, then seed attack logs — the incident appears live, with a toast notification.
 
 ---
 
@@ -615,7 +616,7 @@ A security tool must be secure too:
 | **4. ML** | 11–15 | Feature engineering, EDA, Isolation Forest, scores, evaluation, save/load | Trained model plus evaluation report | ✅ Completed |
 | **5. Threat intelligence** | 16–18 | IP reputation, risk scoring, enrichment | Enriched incidents | ✅ Completed |
 | **6. GenAI** | 19–21 | Summaries, evidence explanation, investigation assistant | AI explanation on incident page | ✅ Completed |
-| **7. Real-time SOC** | 22–25 | WebSockets, live alerts, live dashboard, notifications | Live dashboard | ⏱️ Planned |
+| **7. Real-time SOC** | 22–25 | WebSockets, live alerts, live dashboard, notifications | Live dashboard | ✅ Completed |
 | **8. Polish** | 26–30 | Auth, tests, Docker, deployment, README, diagrams, screenshots, demo video | Resume-ready project | ⏱️ Planned |
 
 ---

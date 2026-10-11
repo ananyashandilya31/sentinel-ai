@@ -26,6 +26,7 @@ import EventTypeBadge from '../components/EventTypeBadge';
 import ReputationBadge from '../components/ReputationBadge';
 import RiskScoreGauge from '../components/RiskScoreGauge';
 import AIInvestigationCard from '../components/AIInvestigationCard';
+import { useLiveAlerts } from '../hooks/useLiveAlerts';
 
 export default function IncidentsPage({ onIncidentCountChange }) {
   const [incidents, setIncidents] = useState([]);
@@ -91,6 +92,20 @@ export default function IncidentsPage({ onIncidentCountChange }) {
   useEffect(() => {
     loadIncidents();
   }, [loadIncidents]);
+
+  // ── Live updates: refresh the list when the WebSocket stream
+  // reports a new or updated incident (Phase 7 real-time SOC)
+  const { incidentEvents } = useLiveAlerts();
+  const lastLiveRefresh = React.useRef(0);
+
+  useEffect(() => {
+    if (incidentEvents.length === 0) return;
+    // Debounce: at most one refresh per 2 seconds
+    const now = Date.now();
+    if (now - lastLiveRefresh.current < 2000) return;
+    lastLiveRefresh.current = now;
+    loadIncidents();
+  }, [incidentEvents, loadIncidents]);
 
   const handleOpenDetail = async (incidentId) => {
     setDetailLoading(true);

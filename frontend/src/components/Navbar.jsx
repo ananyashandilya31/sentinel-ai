@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Activity, FileText, AlertOctagon, BrainCircuit, ShieldAlert } from 'lucide-react';
+import { Shield, Activity, FileText, AlertOctagon, BrainCircuit, ShieldAlert, LayoutDashboard } from 'lucide-react';
 
 export default function Navbar({ currentTab, onSelectTab, systemStatus, openIncidentsCount = 0 }) {
   const { isApiOnline, isDbConnected } = systemStatus;
@@ -28,6 +28,14 @@ export default function Navbar({ currentTab, onSelectTab, systemStatus, openInci
 
       {/* Navigation Tabs */}
       <nav className="nav-tabs">
+        <button
+          className={`nav-tab-btn ${currentTab === 'dashboard' ? 'active' : ''}`}
+          onClick={() => onSelectTab('dashboard')}
+        >
+          <LayoutDashboard size={16} />
+          <span>Dashboard</span>
+          <span className="live-dot" style={{ width: 6, height: 6 }} />
+        </button>
         <button
           className={`nav-tab-btn ${currentTab === 'incidents' ? 'active' : ''}`}
           onClick={() => onSelectTab('incidents')}

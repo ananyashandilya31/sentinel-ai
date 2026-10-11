@@ -774,3 +774,135 @@ code, pre {
   border-top: 1px solid var(--border-color);
   font-family: var(--font-mono);
 }
+
+/* ─── Phase 7: Real-Time SOC ─────────────────────────────────── */
+
+/* Live indicator dot */
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--accent-green);
+  display: inline-block;
+  animation: livePulse 1.6s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+}
+
+/* Toast notifications (top-right stack) */
+.toast-container {
+  position: fixed;
+  top: 76px;
+  right: 1.25rem;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 340px;
+  max-width: calc(100vw - 2.5rem);
+}
+
+.toast-notification {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  animation: toastSlideIn 0.3s ease-out;
+}
+
+@keyframes toastSlideIn {
+  from { transform: translateX(110%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.toast-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+}
+
+.toast-close:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.toast-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.15rem;
+}
+
+.toast-meta {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Live event feed */
+.live-feed {
+  display: flex;
+  flex-direction: column;
+}
+
+.feed-item {
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+  animation: feedFadeIn 0.3s ease-out;
+}
+
+@keyframes feedFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.feed-type {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--accent-cyan);
+}
+
+.feed-time {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.feed-body {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-top: 0.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Activity chart (CSS bars) */
+.activity-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 90px;
+  padding: 0.5rem 0;
+}
+
+.activity-bar {
+  min-width: 6px;
+  border-radius: 3px 3px 0 0;
+  align-self: stretch;
+  transition: flex 0.3s ease;
+}

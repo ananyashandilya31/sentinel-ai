@@ -20,6 +20,7 @@ from backend.detection.base import DetectedAlert
 from backend.detection.engine import default_engine
 from backend.services.threat_intel_service import enrich_incident_ips
 from backend.services.investigation_service import get_latest_investigation
+from backend.ws.manager import ws_manager
 
 
 def process_alerts(db: Session, alerts: List[DetectedAlert]) -> List[Incident]:
@@ -100,6 +101,25 @@ def process_alerts(db: Session, alerts: List[DetectedAlert]) -> List[Incident]:
         created_or_updated.append(incident)
 
     db.commit()
+
+    # Broadcast newly created or escalated incidents over WebSockets to connected SOC dashboards
+    for inc in created_or_updated:
+        ws_manager.broadcast_sync({
+            "type": "NEW_INCIDENT",
+            "incident": {
+                "id": inc.id,
+                "title": inc.title,
+                "type": inc.type,
+                "severity": inc.severity,
+                "status": inc.status,
+                "assigned_to": inc.assigned_to,
+                "created_at": inc.created_at.isoformat() if inc.created_at else None,
+                "evidence_count": len(inc.evidence) if inc.evidence else 0,
+                "alerts_count": len(inc.alerts) if inc.alerts else 0,
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+
     return created_or_updated
 
 
@@ -257,5 +277,15 @@ def update_incident(
 
     incident.updated_at = datetime.now(timezone.utc)
     db.commit()
+
+    # Broadcast update event to all connected dashboards
+    ws_manager.broadcast_sync({
+        "type": "INCIDENT_UPDATED",
+        "incident_id": incident_id,
+        "status": incident.status,
+        "assigned_to": incident.assigned_to,
+        "updated_at": incident.updated_at.isoformat() if incident.updated_at else None,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
 
     return get_incident_by_id(db, incident_id)
