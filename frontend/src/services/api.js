@@ -219,3 +219,92 @@ export async function evaluateDetection() {
     throw error;
   }
 }
+
+// ─── ML Anomaly Detection ──────────────────────────────────────────────────
+
+/**
+ * Calls POST /api/v1/ml/train — trains the Isolation Forest model.
+ */
+export async function trainModel() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/ml/train`, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error training model:', error);
+    throw error;
+  }
+}
+
+/**
+ * Calls GET /api/v1/ml/status — checks whether the model is ready.
+ */
+export async function fetchMLStatus() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/ml/status`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching ML status:', error);
+    throw error;
+  }
+}
+
+/**
+ * Calls POST /api/v1/ml/predict — scores logs from the last N hours.
+ */
+export async function runMLPredict(hours = 24) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/ml/predict?hours=${hours}`, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error running ML predict:', error);
+    throw error;
+  }
+}
+
+/**
+ * Calls GET /api/v1/ml/predictions — paginated list of stored predictions.
+ */
+export async function fetchMLPredictions({
+  page = 1,
+  pageSize = 20,
+  anomaliesOnly = false,
+} = {}) {
+  try {
+    const params = new URLSearchParams();
+    params.set('page', page);
+    params.set('page_size', pageSize);
+    if (anomaliesOnly) params.set('anomalies_only', 'true');
+
+    const response = await fetch(`${API_BASE_URL}/api/v1/ml/predictions?${params.toString()}`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ML predictions (HTTP ${response.status})`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching ML predictions:', error);
+    throw error;
+  }
+}

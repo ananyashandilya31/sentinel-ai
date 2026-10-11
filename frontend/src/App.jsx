@@ -3,10 +3,11 @@ import Navbar from './components/Navbar';
 import HealthPage from './pages/HealthPage';
 import EventsPage from './pages/EventsPage';
 import IncidentsPage from './pages/IncidentsPage';
+import MLPredictionsPage from './pages/MLPredictionsPage';
 import { fetchHealthStatus } from './services/api';
 
 export default function App() {
-  const [currentTab, setCurrentTab] = useState('incidents'); // Default to Incidents in Phase 3
+  const [currentTab, setCurrentTab] = useState('incidents'); // Default to Incidents
   const [openIncidentsCount, setOpenIncidentsCount] = useState(0);
   const [healthData, setHealthData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -57,6 +58,7 @@ export default function App() {
         {currentTab === 'incidents' && (
           <IncidentsPage onIncidentCountChange={setOpenIncidentsCount} />
         )}
+        {currentTab === 'ml' && <MLPredictionsPage />}
         {currentTab === 'events' && <EventsPage />}
         {currentTab === 'health' && (
           <HealthPage
@@ -74,7 +76,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="soc-footer">
-        SentinelAI SOC — AI-Powered Security Operations Center • Phase 3 Detection Engine Active
+        SentinelAI SOC — AI-Powered Security Operations Center • Phase 4 ML Anomaly Detection Active
       </footer>
     </div>
   );
