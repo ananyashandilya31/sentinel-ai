@@ -1,4 +1,5 @@
 from backend.database import Base
+from backend.models.log import Log
+from backend.models.incident import Incident, Alert, Evidence
 
-# Model exports will be aggregated here in future phases (User, Log, Incident, Alert, etc.)
-__all__ = ["Base"]
+__all__ = ["Base", "Log", "Incident", "Alert", "Evidence"]

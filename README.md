@@ -2,7 +2,7 @@
 
 > A real-time cybersecurity platform that ingests server/network logs, detects known attacks with rule-based logic, finds unknown/unusual behaviour with machine learning, enriches suspicious IPs with threat intelligence, and uses an LLM to explain incidents to security analysts.
 
-**Status:** 🚧 In development — Phase 1: Foundation Completed ✅ (30-day build plan)
+**Status:** 🚧 In development — Phase 3: Detection Engine Completed ✅ (30-day build plan)
 **Type:** Full-stack + Machine Learning + Generative AI project
 
 ---
@@ -608,9 +608,9 @@ A security tool must be secure too:
 | Phase | Days | Goal | Deliverable | Status |
 |---|---|---|---|---|
 | **1. Foundation** | 1–2 | Repo, FastAPI, React+Vite, PostgreSQL, first API | Working skeleton with DB connection | ✅ Completed |
-| **2. Security logs** | 3–5 | Schema, log generator, storage, display, search/filter | Events page working | ⏳ Next |
-| **3. Detection engine** | 6–10 | Brute force, port scan, exfiltration, account compromise, privilege escalation | Alerts and incidents created automatically | ⏱️ Planned |
-| **4. ML** | 11–15 | Feature engineering, EDA, Isolation Forest, scores, evaluation, save/load | Trained model plus evaluation report | ⏱️ Planned |
+| **2. Security logs** | 3–5 | Schema, log generator, storage, display, search/filter | Events page working | ✅ Completed |
+| **3. Detection engine** | 6–10 | Brute force, port scan, exfiltration, account compromise, privilege escalation | Alerts and incidents created automatically | ✅ Completed |
+| **4. ML** | 11–15 | Feature engineering, EDA, Isolation Forest, scores, evaluation, save/load | Trained model plus evaluation report | ⏳ Next |
 | **5. Threat intelligence** | 16–18 | IP reputation, risk scoring, enrichment | Enriched incidents | ⏱️ Planned |
 | **6. GenAI** | 19–21 | Summaries, evidence explanation, investigation assistant | AI explanation on incident page | ⏱️ Planned |
 | **7. Real-time SOC** | 22–25 | WebSockets, live alerts, live dashboard, notifications | Live dashboard | ⏱️ Planned |
