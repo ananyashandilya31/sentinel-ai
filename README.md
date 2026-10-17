@@ -2,7 +2,7 @@
 
 > A real-time cybersecurity platform that ingests server/network logs, detects known attacks with rule-based logic, finds unknown/unusual behaviour with machine learning, enriches suspicious IPs with threat intelligence, and uses an LLM to explain incidents to security analysts.
 
-**Status:** ✅ Complete — Phase 8: Polish & Deployment (JWT auth, Docker, 95 tests)
+**Status:** 🚧 In development — Phases 1–7 complete, Phase 8 in final polish
 **Type:** Full-stack + Machine Learning + Generative AI project
 
 ---
@@ -98,31 +98,50 @@ Security teams face three real problems:
 
 ## 5. System Architecture
 
-```text
-┌───────────────┐      ┌────────────────────────────────────────────────┐
-│  Log Sources  │      │                 FastAPI Backend                │
-│ (generated /  │ ───► │                                                │
-│  CSV / API)   │      │  Ingestion ─► Validation ─► PostgreSQL         │
-└───────────────┘      │                   │                            │
-                       │                   ▼                            │
-                       │        ┌─────────────────────┐                 │
-                       │        │  Detection Layer    │                 │
-                       │        │  • Rule Engine      │                 │
-                       │        │  • ML (Isolation    │                 │
-                       │        │    Forest)          │                 │
-                       │        └─────────┬───────────┘                 │
-                       │                  ▼                             │
-                       │        Incident Builder                        │
-                       │                  │                             │
-                       │      ┌───────────┼─────────────┐               │
-                       │      ▼           ▼             ▼               │
-                       │ Threat Intel   LLM        WebSocket Manager    │
-                       │ (IP enrich)  (explain)     (live alerts)       │
-                       └──────────────────┬─────────────────────────────┘
-                                          ▼
-                              ┌─────────────────────┐
-                              │ React + Vite SOC UI │
-                              └─────────────────────┘
+```mermaid
+flowchart TB
+    subgraph SRC["Log Sources"]
+        CSV["Synthetic CSV<br/>data/generate_logs.py"]
+        API["REST / Webhook<br/>POST /api/v1/logs"]
+    end
+
+    subgraph BE["FastAPI Backend"]
+        ING["Ingestion +<br/>Pydantic validation"]
+        AUTH["JWT auth<br/>bcrypt + RBAC"]
+        DB[("PostgreSQL<br/>logs · incidents · evidence")]
+        subgraph DET["Detection Layer"]
+            RULES["Rule Engine<br/>brute force · port scan ·<br/>exfiltration · compromise · privesc"]
+            ML["Isolation Forest<br/>per-IP anomaly score 0–1"]
+        end
+        INC["Incident Builder<br/>+ evidence correlation"]
+        subgraph ENR["Enrichment"]
+            TI["Threat Intel<br/>reputation · geo · risk"]
+            LLM["LLM Investigation<br/>explain, never detect"]
+        end
+        WSM["WebSocket Manager<br/>live alert broadcast"]
+    end
+
+    UI["React + Vite SOC Console<br/>dashboard · incidents · ML · threat intel"]
+
+    CSV --> ING
+    API --> AUTH --> ING
+    ING --> DB
+    DB --> RULES
+    DB --> ML
+    RULES --> INC
+    ML --> INC
+    INC --> DB
+    INC --> TI
+    INC --> LLM
+    INC --> WSM
+    WSM -.->|WebSocket /ws/alerts| UI
+    DB --> UI
+    UI -->|REST| AUTH
+
+    style RULES fill:#7f1d1d,stroke:#ef4444,color:#fff
+    style ML fill:#1e3a8a,stroke:#38bdf8,color:#fff
+    style LLM fill:#4c1d95,stroke:#a855f7,color:#fff
+    style AUTH fill:#14532d,stroke:#10b981,color:#fff
 ```
 
 ### Data flow in simple words
@@ -135,6 +154,35 @@ Security teams face three real problems:
 6. The IP is enriched with threat intelligence.
 7. The LLM gets the structured evidence and writes the explanation.
 8. A WebSocket message pushes the new incident to every connected dashboard.
+
+### End-to-end sequence (attack → analyst sees it)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Attacker
+    participant API as FastAPI /api/v1/logs
+    participant DB as PostgreSQL
+    participant R as Rule Engine
+    participant TI as Threat Intel
+    participant L as LLM
+    participant WS as WebSocket Manager
+    participant UI as SOC Dashboard
+
+    A->>API: POST /logs/bulk (10× LOGIN_FAILED)
+    API->>API: Validate (Pydantic) + verify JWT
+    API->>DB: INSERT logs
+    API->>R: evaluate(recent logs)
+    R-->>API: DetectedAlert(HIGH, brute_force)
+    API->>DB: CREATE incident + alerts + evidence links
+    API->>TI: enrich IP reputation
+    TI-->>API: risk_score 87 · RU · hosting
+    API->>L: structured evidence only
+    L-->>API: summary + recommended steps
+    API-->>WS: broadcast NEW_INCIDENT
+    WS-->>UI: push over /ws/alerts (no refresh)
+    UI->>UI: toast + counters + live feed update
+```
 
 ---
 
@@ -240,19 +288,19 @@ Raw logs are converted into per-user (or per-IP) time-window features:
 
 ### 9.3 Pipeline
 
-```text
-Security Events
-      ↓
-Feature Engineering (per user per time window)
-      ↓
-Scaling (StandardScaler)
-      ↓
-Isolation Forest
-      ↓
-┌─────┴──────┐
-Normal     Anomalous
-              ↓
-        Anomaly Score (0–1)
+```mermaid
+flowchart LR
+    LOGS[("Security logs<br/>per IP")] --> FEAT["Feature engineering<br/>failed_logins · success_logins<br/>unique_ports · data_transfer_mb<br/>event_count · event_types · fail_ratio"]
+    FEAT --> SCALE["StandardScaler"]
+    SCALE --> IF["Isolation Forest<br/>n_estimators=200<br/>contamination=0.05"]
+    IF --> SCORE["Anomaly score<br/>normalised 0–1"]
+    SCORE --> PRED[("ml_predictions<br/>score · verdict · features")]
+
+    NOTE["Ground-truth is_attack labels<br/>used ONLY for evaluation,<br/>never shown to the model"] -.-> EVAL["Precision · Recall · F1<br/>ROC-AUC · confusion matrix"]
+
+    style IF fill:#1e3a8a,stroke:#38bdf8,color:#fff
+    style NOTE fill:#422006,stroke:#f59e0b,color:#fff
+    style EVAL fill:#14532d,stroke:#10b981,color:#fff
 ```
 
 ### 9.4 Anomaly score
@@ -366,11 +414,59 @@ Recommended investigation:
 - Connection handling: heartbeat ping/PONG, automatic reconnection with exponential backoff (1s → 30s), per-connection state tracking (`LIVE` / `CONNECTING` / `RECONNECTING` / `OFFLINE`).
 - Reproduce the flow: open the Dashboard, then seed attack logs — the incident appears live, with a toast notification.
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as Dashboard
+    participant WS as ws.js client
+    participant M as ConnectionManager
+    participant S as incident_service
+
+    UI->>WS: mount → connect()
+    WS->>M: WS handshake /ws/alerts
+    M-->>WS: CONNECTION_ESTABLISHED
+    WS-->>UI: state = LIVE
+    loop every 30s
+        WS->>M: "ping"
+        M-->>WS: PONG
+    end
+    Note over S,M: Detection fires in a threadpool (sync endpoint)
+    S->>M: broadcast_sync({NEW_INCIDENT})
+    M->>M: run_coroutine_threadsafe onto app loop
+    M-->>WS: NEW_INCIDENT
+    WS-->>UI: toast + counters + feed
+    Note over WS,M: socket drops → backoff reconnect 1s → 30s
+```
+
 ---
 
 ## 13. Frontend / SOC Dashboard
 
 Built with **React + Vite**, styled like a real SOC console (dark theme, severity colours).
+
+### Screenshots
+
+> Captured from a running instance with real seeded data — regenerate any time
+> with `node scripts/capture_screenshots.mjs` (needs `npm i -D puppeteer`).
+
+| Dashboard — live alerts | Incidents — triage |
+|---|---|
+| ![SOC Dashboard](docs/screenshots/01-dashboard.png) | ![Incidents](docs/screenshots/02-incidents.png) |
+
+| ML anomalies | Threat intelligence |
+|---|---|
+| ![ML Anomalies](docs/screenshots/03-ml-anomalies.png) | ![Threat Intel](docs/screenshots/04-threat-intel.png) |
+
+| Incident detail + AI investigation | Login (JWT auth) |
+|---|---|
+| ![Incident detail](docs/screenshots/07-incident-detail.png) | ![Login](docs/screenshots/08-login.png) |
+
+### Producing demo data
+
+```bash
+python scripts/demo_seed.py    # injects all 5 attack scenarios + runs detection,
+                               # threat intel seeding and an AI investigation
+```
 
 ### Pages
 
@@ -443,6 +539,72 @@ ml_predictions
 - Foreign keys keep incidents ↔ evidence ↔ logs consistent.
 - Migrations managed with Alembic.
 - `model_version` in `ml_predictions` allows comparing model versions later.
+
+### Entity relationships
+
+```mermaid
+erDiagram
+    users ||--o{ logs : "acts in"
+    logs ||--o{ alerts : "triggers"
+    alerts }o--|| incidents : "grouped into"
+    incidents ||--o{ evidence : "correlated with"
+    evidence }o--|| logs : "references"
+    incidents ||--o{ investigations : "explained by"
+    incidents }o--o{ ip_reputation : "enriched from"
+    ml_predictions }o--|| logs : "scores"
+
+    users {
+        string id PK
+        string username UK
+        string password_hash
+        string role "ADMIN | ANALYST"
+        bool is_active
+    }
+    logs {
+        string id PK
+        datetime timestamp
+        string user
+        string ip
+        string event_type
+        int port
+        bigint bytes_transferred
+    }
+    incidents {
+        string id PK
+        string type
+        string severity
+        string status
+        string assigned_to
+    }
+    evidence {
+        string id PK
+        string incident_id FK
+        string log_id FK
+        string description
+    }
+    alerts {
+        string id PK
+        string incident_id FK
+        string rule_name
+        string severity
+    }
+    investigations {
+        string id PK
+        string incident_id FK
+        text ai_summary
+    }
+    ip_reputation {
+        string ip PK
+        string reputation
+        int risk_score
+    }
+    ml_predictions {
+        string id PK
+        string ip
+        float anomaly_score
+        bool is_anomaly
+    }
+```
 
 ---
 
@@ -674,6 +836,36 @@ A security tool must be secure too — this section is implemented, not aspirati
 - JWTs can't be revoked before expiry (no denylist); short `JWT_EXPIRE_MINUTES` limits the exposure window
 - WebSocket endpoint has no auth — a production system would authenticate the upgrade handshake
 
+### Authentication flow
+
+```mermaid
+flowchart TD
+    START(["Analyst opens console"]) --> ME{"GET /auth/me<br/>with stored JWT"}
+    ME -->|"valid"| DASH["SOC Dashboard"]
+    ME -->|"missing / expired / tampered"| LOGIN["LoginPage"]
+
+    LOGIN --> POST["POST /auth/login"]
+    POST --> RATE{"Rate limited?<br/>5 fails / IP / 5 min"}
+    RATE -->|"yes"| REJECT429["HTTP 429"]
+    RATE -->|"no"| VERIFY{"bcrypt.verify<br/>password_hash"}
+    VERIFY -->|"fail"| REJECT401["HTTP 401<br/>generic message"]
+    VERIFY -->|"pass"| SIGN["Sign HS256 JWT<br/>sub + role + exp"]
+    SIGN --> STORE["localStorage token"]
+    STORE --> DASH
+
+    DASH --> WRITE{"Any write request?"}
+    WRITE -->|"no"| READ["Read endpoints open<br/>(health, monitoring)"]
+    WRITE -->|"yes"| GATE["require_auth_if_enabled"]
+    GATE -->|"no token"| REJECT401
+    GATE -->|"valid"| RBAC{"Role check"}
+    RBAC -->|ANALYST| TRIAGE["Triage incidents"]
+    RBAC -->|ADMIN| ADMIN["+ provision users"]
+
+    style VERIFY fill:#14532d,stroke:#10b981,color:#fff
+    style GATE fill:#7f1d1d,stroke:#ef4444,color:#fff
+    style ADMIN fill:#4c1d95,stroke:#a855f7,color:#fff
+```
+
 ---
 
 ## 20. Development Roadmap (30 Days)
@@ -687,7 +879,7 @@ A security tool must be secure too — this section is implemented, not aspirati
 | **5. Threat intelligence** | 16–18 | IP reputation, risk scoring, enrichment | Enriched incidents | ✅ Completed |
 | **6. GenAI** | 19–21 | Summaries, evidence explanation, investigation assistant | AI explanation on incident page | ✅ Completed |
 | **7. Real-time SOC** | 22–25 | WebSockets, live alerts, live dashboard, notifications | Live dashboard | ✅ Completed |
-| **8. Polish** | 26–30 | Auth, tests, Docker, deployment, README, diagrams, screenshots, demo video | Resume-ready project | ✅ Completed |
+| **8. Polish** | 26–30 | Auth, tests, Docker, deployment, README, diagrams, screenshots, demo video | Resume-ready project | 🟡 Mostly done — auth, tests, Docker, README, diagrams complete; screenshots + demo video outstanding |
 
 ---
 

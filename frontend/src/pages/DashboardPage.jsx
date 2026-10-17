@@ -38,9 +38,11 @@ export default function DashboardPage({ onOpenIncidents }) {
   const loadBaseline = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     try {
-      // Fetch all incidents (pageSize 200) to compute severity counters
+      // Fetch all incidents to compute severity counters.
+      // page_size is capped at 100 by the API (le=100) — asking for more
+      // returns HTTP 422 and breaks the whole dashboard load.
       const [incRes, logRes] = await Promise.all([
-        fetchIncidents({ page: 1, pageSize: 200 }),
+        fetchIncidents({ page: 1, pageSize: 100 }),
         fetchLogs({ page: 1, pageSize: 1 }),
       ]);
       const items = incRes.items || [];
