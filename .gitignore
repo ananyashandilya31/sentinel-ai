@@ -32,6 +32,10 @@ backend/venv/
 .env
 .env.local
 .env.*.local
+# Local env copies — these must never be committed (real keys!)
+.env.txt
+.env.*.txt
+*.env
 
 # Node / Frontend
 node_modules/
