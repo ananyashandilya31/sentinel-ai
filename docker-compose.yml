@@ -1,3 +1,9 @@
+# SentinelAI — full stack with `docker compose up --build`
+#
+#   Web UI      → http://localhost:5173
+#   API docs    → http://localhost:8000/docs
+#   Login       → admin / admin12345  (change immediately)
+
 services:
   postgres:
     image: postgres:15-alpine
@@ -17,6 +23,58 @@ services:
       timeout: 5s
       retries: 5
 
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: sentinel_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql://sentinel_user:sentinel_pass@postgres:5432/sentinel_db
+      JWT_SECRET: ${JWT_SECRET:-change_me_in_production_use_a_long_random_string}
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRE_MINUTES: 60
+      AUTH_ENABLED: "true"
+      LOGIN_MAX_ATTEMPTS: "5"
+      LOGIN_ATTEMPT_WINDOW_SECONDS: "300"
+      LLM_API_KEY: ${LLM_API_KEY:-mock-key}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      CORS_ORIGINS: '["http://localhost:5173","http://localhost:8080"]'
+    ports:
+      - "8000:8000"
+    volumes:
+      # Trained model artifacts live outside the image
+      - mlartifacts:/app/ml/models
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=4).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    container_name: sentinel_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "5173:80"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 volumes:
   pgdata:
+    driver: local
+  mlartifacts:
     driver: local

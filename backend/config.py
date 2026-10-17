@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "sentinel_dev_secret_key_random_at_least_32_bytes_long_string_soc"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60
+    # When true, protected endpoints require a valid Bearer token.
+    # Set to false locally to run the SOC console without logging in.
+    AUTH_ENABLED: bool = True
+    # Login throttling: max failures per client IP within the window
+    LOGIN_MAX_ATTEMPTS: int = 5
+    LOGIN_ATTEMPT_WINDOW_SECONDS: int = 300
 
     # LLM & Threat Intelligence (Phase 5 & 6 placeholders)
     LLM_PROVIDER: str = "openai"

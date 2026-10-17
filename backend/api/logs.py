@@ -13,12 +13,13 @@ from backend.schemas.log import (
     EventType,
 )
 from backend.services import log_service, incident_service
+from backend.dependencies import require_auth_if_enabled
 
 router = APIRouter(prefix="/logs", tags=["Logs Ingestion & Search"])
 
 
 @router.post("", response_model=LogResponse, status_code=status.HTTP_201_CREATED, summary="Ingest Single Security Log")
-def ingest_log(log_data: LogCreate, db: Session = Depends(get_db)) -> LogResponse:
+def ingest_log(log_data: LogCreate, db: Session = Depends(get_db), _: None = Depends(require_auth_if_enabled)) -> LogResponse:
     """
     Ingests, validates, and stores a single security event log.
     Automatically evaluates active detection rules.
@@ -36,7 +37,7 @@ def ingest_log(log_data: LogCreate, db: Session = Depends(get_db)) -> LogRespons
 
 
 @router.post("/bulk", status_code=status.HTTP_201_CREATED, summary="Bulk Ingest Security Logs")
-def ingest_logs_bulk(payload: LogBulkCreate, db: Session = Depends(get_db)):
+def ingest_logs_bulk(payload: LogBulkCreate, db: Session = Depends(get_db), _: None = Depends(require_auth_if_enabled)):
     """
     Ingests a batch of security event logs in a single transaction.
     Automatically evaluates detection rules on the newly ingested batch.
@@ -90,6 +91,7 @@ def list_logs(
 def seed_logs(
     limit: int = Query(250, ge=10, le=2000, description="Max logs to seed into database"),
     db: Session = Depends(get_db),
+    _: None = Depends(require_auth_if_enabled),
 ):
     """
     Populates the database with synthetic logs from the generated dataset in `data/security_logs.csv`

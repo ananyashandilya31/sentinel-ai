@@ -6,13 +6,39 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 /**
+ * authFetch — fetch wrapper that attaches the stored JWT as a Bearer
+ * token (Phase 8) and redirects to the login screen on 401.
+ *
+ * All API helpers below go through this so protected write endpoints
+ * work without threading the token through every call site.
+ */
+async function authFetch(url, options = {}) {
+  const token = localStorage.getItem('sentinelai_token');
+  const headers = { Accept: 'application/json', ...(options.headers || {}) };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(url, { ...options, headers });
+
+  if (response.status === 401 && token) {
+    // Token expired or revoked — drop it so the app shows the login screen
+    localStorage.removeItem('sentinelai_token');
+    localStorage.removeItem('sentinelai_user');
+  }
+
+  return response;
+}
+
+/**
  * Calls GET /api/v1/health
  * Measures latency and returns the health payload.
  */
 export async function fetchHealthStatus() {
   const startTime = performance.now();
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/health`, {
+    const response = await authFetch(`${API_BASE_URL}/api/v1/health`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -68,7 +94,7 @@ export async function fetchLogs({
     if (eventType) params.set('event_type', eventType);
     if (search) params.set('search', search);
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/logs?${params.toString()}`, {
+    const response = await authFetch(`${API_BASE_URL}/api/v1/logs?${params.toString()}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -91,7 +117,7 @@ export async function fetchLogs({
  */
 export async function seedLogs(limit = 250) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/logs/seed?limit=${limit}`, {
+    const response = await authFetch(`${API_BASE_URL}/api/v1/logs/seed?limit=${limit}`, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -127,7 +153,7 @@ export async function fetchIncidents({
     if (status) params.set('status', status);
     if (type) params.set('type', type);
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/incidents?${params.toString()}`, {
+    const response = await authFetch(`${API_BASE_URL}/api/v1/incidents?${params.toString()}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -150,7 +176,7 @@ export async function fetchIncidents({
  */
 export async function fetchIncidentById(incidentId) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/incidents/${incidentId}`, {
+    const response = await authFetch(`${API_BASE_URL}/api/v1/incidents/${incidentId}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -177,7 +203,7 @@ export async function updateIncidentStatus(incidentId, { status, assigned_to }) 
     if (status) payload.status = status;
     if (assigned_to !== undefined) payload.assigned_to = assigned_to;
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/incidents/${incidentId}`, {
+    const response = await authFetch(`${API_BASE_URL}/api/v1/incidents/${incidentId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -202,7 +228,7 @@ export async function updateIncidentStatus(incidentId, { status, assigned_to }) 
  */
 export async function evaluateDetection() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/incidents/evaluate`, {
+    const response = await authFetch(`${API_BASE_URL}/api/v1/incidents/evaluate`, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -227,7 +253,7 @@ export async function evaluateDetection() {
  */
 export async function trainModel() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/ml/train`, {
+    const response = await authFetch(`${API_BASE_URL}/api/v1/ml/train`, {
       method: 'POST',
       headers: { 'Accept': 'application/json' },
     });
@@ -247,7 +273,7 @@ export async function trainModel() {
  */
 export async function fetchMLStatus() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/ml/status`, {
+    const response = await authFetch(`${API_BASE_URL}/api/v1/ml/status`, {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
     });
@@ -266,7 +292,7 @@ export async function fetchMLStatus() {
  */
 export async function runMLPredict(hours = 24) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/ml/predict?hours=${hours}`, {
+    const response = await authFetch(`${API_BASE_URL}/api/v1/ml/predict?hours=${hours}`, {
       method: 'POST',
       headers: { 'Accept': 'application/json' },
     });
@@ -295,7 +321,7 @@ export async function fetchMLPredictions({
     params.set('page_size', pageSize);
     if (anomaliesOnly) params.set('anomalies_only', 'true');
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/ml/predictions?${params.toString()}`, {
+    const response = await authFetch(`${API_BASE_URL}/api/v1/ml/predictions?${params.toString()}`, {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
     });
@@ -327,7 +353,7 @@ export async function fetchThreatIntel({
     if (minRisk !== '' && minRisk !== null) params.set('min_risk', minRisk);
     if (search) params.set('search', search);
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/threat-intel?${params.toString()}`, {
+    const response = await authFetch(`${API_BASE_URL}/api/v1/threat-intel?${params.toString()}`, {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
     });
@@ -346,7 +372,7 @@ export async function fetchThreatIntel({
  */
 export async function lookupIPReputation(ip) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/threat-intel/${encodeURIComponent(ip)}`, {
+    const response = await authFetch(`${API_BASE_URL}/api/v1/threat-intel/${encodeURIComponent(ip)}`, {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
     });
@@ -366,7 +392,7 @@ export async function lookupIPReputation(ip) {
  */
 export async function seedThreatIntel(overwrite = false) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/threat-intel/seed?overwrite=${overwrite}`, {
+    const response = await authFetch(`${API_BASE_URL}/api/v1/threat-intel/seed?overwrite=${overwrite}`, {
       method: 'POST',
       headers: { 'Accept': 'application/json' },
     });
@@ -385,7 +411,7 @@ export async function seedThreatIntel(overwrite = false) {
  */
 export async function fetchIncidentThreatIntel(incidentId) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/threat-intel/incident/${incidentId}`, {
+    const response = await authFetch(`${API_BASE_URL}/api/v1/threat-intel/incident/${incidentId}`, {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
     });
@@ -405,7 +431,7 @@ export async function fetchIncidentThreatIntel(incidentId) {
  */
 export async function triggerInvestigation(incidentId, forceRefresh = false) {
   try {
-    const response = await fetch(
+    const response = await authFetch(
       `${API_BASE_URL}/api/v1/incidents/${incidentId}/investigate?force_refresh=${forceRefresh}`,
       {
         method: 'POST',
@@ -428,7 +454,7 @@ export async function triggerInvestigation(incidentId, forceRefresh = false) {
  */
 export async function fetchInvestigation(incidentId) {
   try {
-    const response = await fetch(
+    const response = await authFetch(
       `${API_BASE_URL}/api/v1/incidents/${incidentId}/investigation`,
       {
         method: 'GET',

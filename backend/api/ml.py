@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
+from backend.dependencies import require_auth_if_enabled
 from backend.ml import get_predictor
 from backend.ml.trainer import MODEL_PATH, train
 from backend.schemas.ml_prediction import (
@@ -31,7 +32,7 @@ router = APIRouter(prefix="/ml")
 
 
 @router.post("/train", response_model=TrainResponse, summary="Train the Isolation Forest model")
-def train_model():
+def train_model(_: None = Depends(require_auth_if_enabled)):
     """
     Train the Isolation Forest on `data/security_logs.csv`.
 
@@ -78,6 +79,7 @@ def model_status():
 def predict(
     hours: int = Query(24, ge=1, le=168, description="Rolling window in hours to score"),
     db: Session = Depends(get_db),
+    _: None = Depends(require_auth_if_enabled),
 ):
     """
     Run the Isolation Forest against all logs from the last `hours` hours.

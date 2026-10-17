@@ -1,8 +1,10 @@
 import React from 'react';
-import { Shield, Activity, FileText, AlertOctagon, BrainCircuit, ShieldAlert, LayoutDashboard } from 'lucide-react';
+import { Shield, Activity, FileText, AlertOctagon, BrainCircuit, ShieldAlert, LayoutDashboard, LogOut, UserCog } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function Navbar({ currentTab, onSelectTab, systemStatus, openIncidentsCount = 0 }) {
   const { isApiOnline, isDbConnected } = systemStatus;
+  const { user, logout } = useAuth();
 
   let systemStatusText = 'OFFLINE';
   let systemStatusClass = 'badge-error';
@@ -77,7 +79,7 @@ export default function Navbar({ currentTab, onSelectTab, systemStatus, openInci
       </nav>
 
 
-      {/* System Status Pill */}
+      {/* System Status Pill + signed-in analyst */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <div
           className={`system-status-pill ${systemStatusClass}`}
@@ -89,6 +91,24 @@ export default function Navbar({ currentTab, onSelectTab, systemStatus, openInci
           />
           {systemStatusText}
         </div>
+
+        {user && (
+          <>
+            <span className="user-chip" title={`Role: ${user.role}`}>
+              <UserCog size={13} />
+              {user.username}
+              <span className="role-badge">{user.role}</span>
+            </span>
+            <button
+              className="logout-btn"
+              onClick={logout}
+              title="Sign out"
+              aria-label="Sign out"
+            >
+              <LogOut size={15} />
+            </button>
+          </>
+        )}
       </div>
     </header>
   );

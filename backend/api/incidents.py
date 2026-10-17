@@ -15,6 +15,7 @@ from backend.schemas.incident import (
 from backend.schemas.investigation import InvestigationResponse, InvestigationRequest
 from backend.services import incident_service
 from backend.services.investigation_service import investigate_incident, get_latest_investigation
+from backend.dependencies import require_auth_if_enabled
 
 router = APIRouter(prefix="/incidents", tags=["Incidents & Detection"])
 
@@ -67,6 +68,7 @@ def update_incident(
     incident_id: str,
     payload: IncidentUpdate,
     db: Session = Depends(get_db),
+    _: None = Depends(require_auth_if_enabled),
 ) -> IncidentDetailResponse:
     """
     Updates the lifecycle status (e.g. OPEN -> INVESTIGATING -> RESOLVED) or assigned analyst for an incident.
@@ -83,6 +85,7 @@ def update_incident(
 @router.post("/evaluate", status_code=status.HTTP_200_OK, summary="Run Detection Engine on Stored Logs")
 def evaluate_detection(
     db: Session = Depends(get_db),
+    _: None = Depends(require_auth_if_enabled),
 ):
     """
     Manually triggers evaluation of all detection rules over stored security logs.
@@ -105,6 +108,7 @@ def run_investigation(
     payload: Optional[InvestigationRequest] = None,
     force_refresh: bool = Query(False, description="Whether to regenerate analysis bypassing cache"),
     db: Session = Depends(get_db),
+    _: None = Depends(require_auth_if_enabled),
 ) -> InvestigationResponse:
     """
     Triggers AI-powered incident investigation.

@@ -6,11 +6,14 @@ import EventsPage from './pages/EventsPage';
 import IncidentsPage from './pages/IncidentsPage';
 import MLPredictionsPage from './pages/MLPredictionsPage';
 import ThreatIntelPage from './pages/ThreatIntelPage';
+import LoginPage from './pages/LoginPage';
 import NotificationToast from './components/NotificationToast';
 import { useLiveAlerts } from './hooks/useLiveAlerts';
+import { useAuth } from './context/AuthContext';
 import { fetchHealthStatus } from './services/api';
 
 export default function App() {
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [currentTab, setCurrentTab] = useState('dashboard'); // Phase 7: live dashboard first
   const [openIncidentsCount, setOpenIncidentsCount] = useState(0);
   const [healthData, setHealthData] = useState(null);
@@ -67,6 +70,25 @@ export default function App() {
     return () => clearInterval(interval);
   }, [checkHealth, autoRefresh]);
 
+  // ── Auth gate ───────────────────────────────────────────────────
+  if (authLoading) {
+    return (
+      <div className="soc-app">
+        <div className="page-container" style={{ textAlign: 'center', paddingTop: '4rem' }}>
+          <span style={{ color: 'var(--accent-cyan)' }}>Validating session…</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="soc-app">
+        <LoginPage />
+      </div>
+    );
+  }
+
   const isApiOnline = !!healthData;
   const isDbConnected = healthData?.database?.status === 'connected';
 
@@ -110,7 +132,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="soc-footer">
-        SentinelAI SOC — AI-Powered Security Operations Center • Phase 7 Real-Time Alerts Active
+        SentinelAI SOC — AI-Powered Security Operations Center • Phase 8 Auth &amp; Docker Complete
       </footer>
     </div>
   );

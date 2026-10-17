@@ -2,7 +2,7 @@
 
 > A real-time cybersecurity platform that ingests server/network logs, detects known attacks with rule-based logic, finds unknown/unusual behaviour with machine learning, enriches suspicious IPs with threat intelligence, and uses an LLM to explain incidents to security analysts.
 
-**Status:** 🚧 In development — Phase 7: Real-Time SOC Completed ✅ (30-day build plan)
+**Status:** ✅ Complete — Phase 8: Polish & Deployment (JWT auth, Docker, 95 tests)
 **Type:** Full-stack + Machine Learning + Generative AI project
 
 ---
@@ -427,7 +427,7 @@ ml_predictions
 
 | Table | Key columns |
 |---|---|
-| `users` | id, username, email, password_hash, role |
+| `users` | id, username, email, password_hash, role, is_active, last_login_at |
 | `logs` | id, timestamp, user, ip, event_type, port, bytes_transferred, country, session_id |
 | `alerts` | id, rule_name, severity, log_id, created_at |
 | `incidents` | id, title, type, severity, status, assigned_to, created_at, updated_at |
@@ -454,6 +454,8 @@ Base path: `/api/v1`
 |---|---|---|
 | POST | `/auth/login` | Get JWT token |
 | POST | `/auth/register` | Create user (admin only) |
+| GET | `/auth/me` | Current user profile |
+| POST | `/auth/seed` | Ensure bootstrap admin exists (idempotent) |
 | POST | `/logs` | Ingest one log |
 | POST | `/logs/bulk` | Ingest many logs |
 | GET | `/logs` | List logs (filters, search, pagination) |
@@ -478,29 +480,56 @@ sentinel-ai/
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── dashboard/
-│   │   └── services/
+│   │   ├── components/     # Navbar, toasts, badges, score gauge
+│   │   ├── pages/          # Login, Dashboard, Incidents, Events, ML, Threat Intel
+│   │   ├── context/        # AuthContext (JWT session)
+│   │   ├── hooks/          # useLiveAlerts (WebSocket stream)
+│   │   └── services/       # api.js (authFetch), auth.js, ws.js
 │   └── package.json
 │
 ├── backend/
-│   ├── api/
-│   ├── models/
-│   ├── schemas/
-│   ├── services/
-│   ├── detection/
+│   ├── api/                # auth, logs, incidents, ml, threat_intel, ws, health
+│   ├── models/             # User, Log, Incident, Evidence, IPReputation, …
+│   ├── schemas/            # Pydantic request/response contracts
+│   ├── services/           # auth_service, incident_service, ml_service, …
+│   ├── detection/          # rule engine (Phase 3)
+│   ├── ws/                 # WebSocket ConnectionManager (Phase 7)
+│   ├── security.py         # bcrypt hashing + JWT (Phase 8)
+│   ├── dependencies.py     # get_current_user / get_current_admin / auth gate
 │   └── main.py
 │
 ├── ml/
-│   ├── data/
-│   ├── preprocessing/
-│   ├── training/
-│   ├── models/
-│   └── inference/
+│   ├── data/               # eda.py, eda_report.md
+│   ├── training/           # train.py, evaluate.py
+│   ├── models/             # isolation_forest.joblib (gitignored)
+│   └── ...
 │
-├── data/
-│   └── security_logs.csv
+├── docker/
+│   ├── backend.Dockerfile  # FastAPI image (wheel cache, non-root, healthcheck)
+│   ├── frontend.Dockerfile # Vite build → nginx
+│   ├── nginx.conf          # SPA + /api + /ws proxy
+│   └── entrypoint.sh       # wait-for-db → migrate → seed admin → uvicorn
+│
+├── tests/                  # 95 pytest tests
+├── docker-compose.yml
+└── README.md
+```
+
+### Running with Docker (one command)
+
+```bash
+docker compose up --build
+```
+
+| Service | URL |
+|---|---|
+| SOC dashboard | http://localhost:5173 |
+| API docs (Swagger) | http://localhost:8000/docs |
+| PostgreSQL | localhost:5432 |
+
+The backend image waits for PostgreSQL, runs `alembic upgrade head`, and seeds
+the bootstrap admin automatically. Log in with **admin / admin12345** — change it
+immediately outside local development.
 │
 ├── docker/
 ├── tests/
@@ -512,8 +541,6 @@ sentinel-ai/
 
 ## 17. Setup and Installation
 
-> These are the planned steps. I'll update them as each phase gets completed.
-
 ### Prerequisites
 
 - Python 3.11+
@@ -522,19 +549,33 @@ sentinel-ai/
 - Git
 - An LLM API key
 
-### Clone
+### Option A — Docker (recommended, one command)
+
+```bash
+git clone https://github.com/<your-username>/sentinel-ai.git
+cd sentinel-ai
+cp .env.example .env          # set JWT_SECRET and LLM_API_KEY
+docker compose up --build
+```
+
+Dashboard: http://localhost:5173 · API docs: http://localhost:8000/docs
+
+### Option B — Local development
+
+#### Clone
 
 ```bash
 git clone https://github.com/<your-username>/sentinel-ai.git
 cd sentinel-ai
 ```
 
-### Environment variables (`.env`)
+#### Environment variables (`.env`)
 
 ```env
 DATABASE_URL=postgresql://user:password@localhost:5432/sentinel
 JWT_SECRET=change_me
 JWT_EXPIRE_MINUTES=60
+AUTH_ENABLED=true
 LLM_API_KEY=your_key_here
 ```
 
@@ -551,12 +592,19 @@ uvicorn main:app --reload
 
 API docs: `http://localhost:8000/docs`
 
-### Generate data and train model
+### Generate data, train model, and create the first user
 
 ```bash
 python data/generate_logs.py
-python ml/training/train.py
+python ml/data/eda.py                # → ml/data/eda_report.md
+python ml/training/train.py           # → ml/models/isolation_forest.joblib
+python ml/training/evaluate.py        # → ml/models/evaluation_report.md
+
+# Create the bootstrap admin (idempotent)
+curl -X POST http://localhost:8000/api/v1/auth/seed
 ```
+
+Then log in at http://localhost:5173 with **admin / admin12345**.
 
 ### Frontend
 
@@ -568,10 +616,11 @@ npm run dev
 
 Dashboard: `http://localhost:5173`
 
-### Run everything with Docker
+### Run tests
 
 ```bash
-docker-compose up --build
+python -m pytest tests/ -v     # 95 tests
+cd frontend && npm run build   # production bundle check
 ```
 
 ---
@@ -584,25 +633,46 @@ docker-compose up --build
 | ML tests | Feature builder output, model loads and scores correctly | pytest |
 | API tests | Auth, ingestion, filters, incident endpoints | pytest + FastAPI TestClient |
 | LLM tests | Prompt builder and output parser (LLM mocked) | pytest |
-| Frontend | Key components and API service calls | Vitest / React Testing Library |
+| Threat intel tests | Reputation seeding, lookups, enrichment | pytest |
+| WebSocket tests | Handshake, heartbeat, live broadcast, manager cleanup | pytest |
+| Security tests | bcrypt hashing, JWT tamper/expiry, login throttling, RBAC | pytest |
+| Frontend | Production bundle builds cleanly | Vite build |
 | Manual / E2E | Inject an attack and watch it appear live on the dashboard | Browser |
 
-**Target:** meaningful coverage of the detection engine, since that's the core of the product.
+**95 tests passing**, with meaningful coverage of the detection engine (the core
+of the product) and the authentication layer.
+
+### Test isolation notes
+
+- Tests use an in-memory SQLite database, so no PostgreSQL is required to run them.
+- Functional tests that exercise detection/ingestion logic run with
+  `AUTH_ENABLED=False` (the `client` fixture); authentication tests use the
+  `auth_client` fixture with enforcement on, so both paths are covered.
 
 ---
 
 ## 19. Security of the Platform Itself
 
-A security tool must be secure too:
+A security tool must be secure too — this section is implemented, not aspirational:
 
-- Passwords hashed with bcrypt, never stored in plain text
-- JWT with expiry and role-based access control
+- Passwords hashed with **bcrypt** (cost 12, per-hash salt). Over-length (>72 byte) passwords are rejected rather than silently truncated
+- JWT (HS256) with expiry, carrying only `sub` and `role` — no secrets in the token
+- **Role-based access control**: `ADMIN` can provision users, `ANALYST` can triage but not create accounts
+- Login throttling: 5 failures per client IP within a 5-minute sliding window → HTTP 429
+- Identical error message for unknown user and wrong password, so usernames can't be enumerated
+- Health and read endpoints stay open for monitoring; **write endpoints require a token**
 - Input validation with Pydantic on every endpoint
 - Parameterised queries via SQLAlchemy (prevents SQL injection)
-- CORS restricted to the frontend origin
-- Secrets only in environment variables, never in Git
-- Rate limiting on login endpoint
+- CORS restricted to the frontend origin; nginx adds `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`
+- Secrets only in environment variables, never in Git (`.env` is gitignored, `.dockerignore` excludes it from images)
+- Containers run as a **non-root** user
 - Minimal data sent to the LLM
+
+### Known limitations
+
+- Login throttling is **in-memory**, so it resets on restart and doesn't work across multiple replicas — Redis would be the production fix
+- JWTs can't be revoked before expiry (no denylist); short `JWT_EXPIRE_MINUTES` limits the exposure window
+- WebSocket endpoint has no auth — a production system would authenticate the upgrade handshake
 
 ---
 
@@ -617,7 +687,7 @@ A security tool must be secure too:
 | **5. Threat intelligence** | 16–18 | IP reputation, risk scoring, enrichment | Enriched incidents | ✅ Completed |
 | **6. GenAI** | 19–21 | Summaries, evidence explanation, investigation assistant | AI explanation on incident page | ✅ Completed |
 | **7. Real-time SOC** | 22–25 | WebSockets, live alerts, live dashboard, notifications | Live dashboard | ✅ Completed |
-| **8. Polish** | 26–30 | Auth, tests, Docker, deployment, README, diagrams, screenshots, demo video | Resume-ready project | ⏱️ Planned |
+| **8. Polish** | 26–30 | Auth, tests, Docker, deployment, README, diagrams, screenshots, demo video | Resume-ready project | ✅ Completed |
 
 ---
 
@@ -680,6 +750,15 @@ I generated data with known injected attacks, held those labels out during train
 
 **Why WebSockets instead of polling?**
 Alerts need to reach analysts instantly; WebSockets push updates without repeated requests.
+
+**How did you secure the SOC console itself?**
+Passwords are bcrypt-hashed (cost 12, salted per hash) and never stored in plaintext. Login returns a short-lived HS256 JWT carrying only the username and role. I gate write endpoints behind that token while leaving health and read endpoints open for monitoring, and I added a sliding-window login throttle (5 failures per IP per 5 minutes) plus a deliberately generic "incorrect username or password" message so the endpoint can't be used to enumerate accounts. Role checks live in a single `get_current_admin` dependency rather than scattered through route bodies.
+
+**Why did you avoid passlib for password hashing?**
+passlib 1.7.x is unmaintained and breaks against modern bcrypt releases (it reads a `__about__` attribute that no longer exists). I call the `bcrypt` library directly — fewer dependencies, no compatibility surprises, and the behaviour is explicit in ~10 lines I can explain.
+
+**What are the security gaps you'd fix next?**
+Three concrete ones: the login throttle is in-memory so it resets on restart and doesn't work across replicas (Redis would fix both), JWTs can't be revoked before expiry without a denylist, and the WebSocket upgrade handshake is currently unauthenticated — a real deployment would verify the token during the handshake so only authorised analysts join the alert stream.
 
 **Why PostgreSQL?**
 The data is relational (users, logs, incidents, evidence) and I need strong indexing for time-range and filter queries.

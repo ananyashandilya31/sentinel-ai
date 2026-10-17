@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
+from backend.dependencies import require_auth_if_enabled
 from backend.schemas.threat_intel import (
     IPReputationResponse,
     PaginatedIPReputationResponse,
@@ -48,6 +49,7 @@ router = APIRouter(prefix="/threat-intel")
 def seed_threat_intel(
     overwrite: bool = Query(False, description="Whether to overwrite existing IP reputation entries"),
     db: Session = Depends(get_db),
+    _: None = Depends(require_auth_if_enabled),
 ):
     """
     Seeds local Threat Intelligence database with curated IP reputations,
