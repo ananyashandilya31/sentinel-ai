@@ -1,4 +1,4 @@
- 🛡️ SentinelAI — AI-Powered Security Operations Center (SOC)
+# 🛡️ SentinelAI — AI-Powered Security Operations Center (SOC)
 
 > A real-time cybersecurity platform that ingests server/network logs, detects known attacks with rule-based logic, finds unknown/unusual behaviour with machine learning, enriches suspicious IPs with threat intelligence, and uses an LLM to explain incidents to security analysts.
 
@@ -692,12 +692,6 @@ docker compose up --build
 The backend image waits for PostgreSQL, runs `alembic upgrade head`, and seeds
 the bootstrap admin automatically. Log in with **admin / admin12345** — change it
 immediately outside local development.
-│
-├── docker/
-├── tests/
-├── README.md
-└── docker-compose.yml
-```
 
 ---
 
@@ -888,6 +882,12 @@ flowchart TD
 Being upfront about these makes the project more credible:
 
 - **Synthetic data** — good for learning and demos, but real logs are noisier.
+- **Small, clean dataset** — the demo CSV has only about 900 events, and fewer than 5% of them are attacks. The attacks are also very easy to separate from normal traffic (huge transfers, foreign IPs, an `anonymous` user), so the Isolation Forest scores very well. I treat those numbers as proof that the pipeline works, **not** proof that the model would generalise to real traffic.
+- **No label leakage, by design** — `is_attack`, `attack_type` and the `session_id` prefixes (e.g. `s-bf-`, `s-exfil-`) are used only for evaluation and are never fed to the model.
+- **Sequence attacks need windowed features** — brute force, port scans and account compromise only look suspicious as a *pattern* (many failures or many distinct ports per IP in a short window), so I engineer per-IP/per-user window features instead of scoring single rows.
+- **Privilege escalation is rule-based** — the dataset has only one `PRIVILEGE_CHANGE` event, which is far too few for an ML model to learn from, so it's caught by a rule and the ML layer isn't credited for it.
+- **Noisy "normal" behaviour** — normal users log in from random countries and internal IPs, so a new-country signal is weaker here than it would be with real users, who tend to be much more consistent.
+- **Next validation step** — retrain and evaluate on a larger, noisier generated set and on public datasets (e.g. CICIDS2017) before making any real-world claims.
 - **False positives** — unsupervised models flag unusual-but-harmless behaviour; thresholds need tuning.
 - **Cold start** — "new IP/new country" features need some history per user.
 - **LLM reliability** — can hallucinate, so it only gets structured evidence and a strict prompt.
