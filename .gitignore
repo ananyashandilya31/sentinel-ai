@@ -35,7 +35,11 @@ backend/venv/
 # Local env copies — these must never be committed (real keys!)
 .env.txt
 .env.*.txt
+# Any .env.* variant (e.g. frontend/.env.production) may hold real keys
+.env.*
 *.env
+# …but the template must stay tracked
+!.env.example
 
 # Node / Frontend
 node_modules/
@@ -58,8 +62,19 @@ frontend/dist-ssr/
 *.db
 
 # ML models / artifacts
-ml/models/*.joblib
-ml/models/*.pkl
+# Ignored everywhere, not just ml/models/ — a model saved to any path
+# must never be committed (binary, large, regenerable via train.py).
+*.joblib
+*.pkl
+*.onnx
+*.h5
+ml/models/*
+!ml/models/.gitkeep
+
+# Logs & OS noise
+*.log
+.DS_Store
+Thumbs.db
 
 # Testing
 .pytest_cache/

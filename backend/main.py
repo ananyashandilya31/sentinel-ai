@@ -1,8 +1,10 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from backend.config import settings
 from backend.api import api_router
 from backend.api.ws import handle_alert_websocket
+from backend.database import get_db
+from sqlalchemy.orm import Session
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -25,8 +27,8 @@ app.add_middleware(
 
 # Mount root WebSocket endpoint for real-time alerting
 @app.websocket("/ws/alerts")
-async def root_websocket_alerts(websocket: WebSocket):
-    await handle_alert_websocket(websocket)
+async def root_websocket_alerts(websocket: WebSocket, db: Session = Depends(get_db)):
+    await handle_alert_websocket(websocket, db)
 
 # Mount versioned API routes
 app.include_router(api_router)
@@ -46,4 +48,15 @@ def root_status():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    from pathlib import Path
+
+    # Custom access-log formatter: strips query strings so the WebSocket
+    # JWT (?token=…) is never written to the log.
+    log_config = Path(__file__).resolve().parents[1] / "docker" / "uvicorn_log_config.json"
+    uvicorn.run(
+        "backend.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_config=str(log_config) if log_config.exists() else None,
+    )

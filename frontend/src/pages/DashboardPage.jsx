@@ -29,6 +29,7 @@ export default function DashboardPage({ onOpenIncidents }) {
   const [incidents, setIncidents] = useState([]);
   const [totalIncidents, setTotalIncidents] = useState(0);
   const [totalEvents, setTotalEvents] = useState(0);
+  const [recentLogs, setRecentLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -38,17 +39,16 @@ export default function DashboardPage({ onOpenIncidents }) {
   const loadBaseline = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     try {
-      // Fetch all incidents to compute severity counters.
-      // page_size is capped at 100 by the API (le=100) — asking for more
-      // returns HTTP 422 and breaks the whole dashboard load.
+      // Fetch all incidents to compute severity counters and recent logs for feed
       const [incRes, logRes] = await Promise.all([
         fetchIncidents({ page: 1, pageSize: 100 }),
-        fetchLogs({ page: 1, pageSize: 1 }),
+        fetchLogs({ page: 1, pageSize: 12 }),
       ]);
       const items = incRes.items || [];
       setIncidents(items);
       setTotalIncidents(incRes.total || 0);
       setTotalEvents(logRes.total || 0);
+      setRecentLogs(logRes.items || []);
     } catch (err) {
       console.error('Dashboard load failed:', err);
     } finally {
@@ -84,21 +84,46 @@ export default function DashboardPage({ onOpenIncidents }) {
     ...incidents,
   ].slice(0, 8);
 
-  // ── Live activity feed (last 12 events) ───────────────────────
-  const feed = events.slice(0, 12);
+  // ── Live activity feed (pre-seeded with recent security logs) ──
+  const logFeedItems = (recentLogs || []).map((l) => ({
+    id: l.id,
+    type: l.event_type || 'SECURITY_LOG',
+    timestamp: l.timestamp,
+    message: `${l.user || 'system'} · ${l.ip || ''} · ${l.port ? `port ${l.port}` : 'internal'} · ${l.status || 'PROCESSED'}`,
+  }));
+
+  // Show live events first; backfill with recent security logs
+  const combinedEvents = [...events, ...logFeedItems];
+  const feed = combinedEvents.slice(0, 12);
 
   const isLive = connectionState === WS_STATE.OPEN;
+  const isUnauthorized = connectionState === WS_STATE.UNAUTHORIZED;
 
   const formatTimestamp = (isoStr) => {
-    if (!isoStr) return '';
+    if (!isoStr) return '—';
     const d = new Date(isoStr);
     return d.toLocaleTimeString('en-US', { hour12: false });
+  };
+
+  const formatDateTime = (isoStr) => {
+    if (!isoStr) return '—';
+    const d = new Date(isoStr);
+    return d.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
   };
 
   const connectionLabel = {
     [WS_STATE.OPEN]: 'LIVE',
     [WS_STATE.CONNECTING]: 'CONNECTING',
     [WS_STATE.RECONNECTING]: 'RECONNECTING',
+    [WS_STATE.UNAUTHORIZED]: 'UNAUTHORIZED',
     [WS_STATE.CLOSED]: 'OFFLINE',
   }[connectionState] || 'OFFLINE';
 
@@ -108,9 +133,9 @@ export default function DashboardPage({ onOpenIncidents }) {
       <div className="phase-banner">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div>
-            <div className="phase-title">Phase 7: Real-Time SOC Dashboard</div>
+            <div className="phase-title">Security Operations Dashboard</div>
             <div className="phase-description">
-              WebSocket live alerts stream — incidents appear the instant detection fires.
+              Real-time threat monitoring, live WebSocket alert stream, and event telemetry.
             </div>
           </div>
           <div
@@ -145,17 +170,22 @@ export default function DashboardPage({ onOpenIncidents }) {
             marginBottom: '1.25rem',
             borderRadius: '6px',
             fontSize: '0.8rem',
-            background: 'rgba(245, 158, 11, 0.1)',
-            border: '1px solid var(--accent-amber)',
-            color: 'var(--accent-amber)',
+            background: isUnauthorized
+              ? 'rgba(239, 68, 68, 0.12)'
+              : 'rgba(245, 158, 11, 0.1)',
+            border: isUnauthorized
+              ? 'var(--accent-red)'
+              : 'var(--accent-amber)',
+            color: isUnauthorized ? 'var(--accent-red)' : 'var(--accent-amber)',
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
           }}
         >
           <WifiOff size={14} />
-          Live stream unavailable ({connectionLabel}) — showing last known state.
-          Retrying automatically…
+          {isUnauthorized
+            ? 'Live stream rejected the session token — sign in again to resume live alerts.'
+            : `Live stream unavailable (${connectionLabel}) — showing last known state. Retrying automatically…`}
         </div>
       )}
 
@@ -246,7 +276,7 @@ export default function DashboardPage({ onOpenIncidents }) {
                     <td><span className="type-badge">{String(inc.type || '').replace('_', ' ')}</span></td>
                     <td style={{ fontWeight: 600 }}>{inc.title}</td>
                     <td><StatusBadge status={inc.status} /></td>
-                    <td className="mono-cell">{formatTimestamp(inc.created_at)}</td>
+                    <td className="mono-cell">{formatDateTime(inc.created_at)}</td>
                   </tr>
                 ))
               )}
@@ -309,6 +339,7 @@ export default function DashboardPage({ onOpenIncidents }) {
                   : evt.type === 'NEW_INCIDENT'
                   ? 'var(--accent-cyan)'
                   : 'var(--accent-green)';
+              const heightPct = Math.round(weight * 60 + ((idx * 11) % 25) + 15);
               return (
                 <div
                   key={evt.id || `bar-${idx}`}
@@ -316,8 +347,9 @@ export default function DashboardPage({ onOpenIncidents }) {
                   title={`${evt.type}${evt.incident ? ` — ${evt.incident.title}` : ''}`}
                   style={{
                     flex: weight,
+                    height: `${heightPct}%`,
                     backgroundColor: color,
-                    opacity: 0.35 + 0.65 * (idx + 1) / Math.max(feed.length, 1),
+                    opacity: 0.35 + (0.65 * (idx + 1)) / Math.max(feed.length, 1),
                   }}
                 />
               );

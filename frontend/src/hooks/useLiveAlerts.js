@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { liveAlertsSocket, WS_STATE } from '../services/ws';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * React hook for the real-time SOC alerts stream.
@@ -7,14 +8,19 @@ import { liveAlertsSocket, WS_STATE } from '../services/ws';
  * Connects to /ws/alerts on mount and keeps the last `maxEvents`
  * live messages in state. Survives reconnects automatically.
  *
+ * The socket is (re)opened whenever the authentication state changes,
+ * so a rejected token (close code 1008) recovers after a fresh login.
+ *
  * @param {{ maxEvents?: number }} options
  * @returns {{
  *   events: Array<object>,
  *   connectionState: string,
  *   incidentEvents: Array<object>,
+ *   isLive: boolean,
  * }}
  */
 export function useLiveAlerts({ maxEvents = 50 } = {}) {
+  const { isAuthenticated } = useAuth();
   const [events, setEvents] = useState([]);
   const [connectionState, setConnectionState] = useState(
     liveAlertsSocket.state
@@ -37,7 +43,9 @@ export function useLiveAlerts({ maxEvents = 50 } = {}) {
       });
     });
 
-    liveAlertsSocket.connect();
+    if (isAuthenticated) {
+      liveAlertsSocket.connect();
+    }
 
     return () => {
       unsubscribe();
@@ -46,13 +54,15 @@ export function useLiveAlerts({ maxEvents = 50 } = {}) {
         liveAlertsSocket.disconnect();
       }
     };
-  }, []);
+  }, [isAuthenticated]);
 
   const incidentEvents = events.filter(
     (e) => e.type === 'NEW_INCIDENT' || e.type === 'INCIDENT_UPDATED'
   );
 
-  return { events, connectionState, incidentEvents };
+  const isLive = connectionState === WS_STATE.OPEN;
+
+  return { events, connectionState, incidentEvents, isLive };
 }
 
 export default useLiveAlerts;

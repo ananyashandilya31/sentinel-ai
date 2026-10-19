@@ -32,6 +32,7 @@ COPY backend/ ./backend/
 COPY data/ ./data/
 COPY ml/ ./ml/
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY docker/uvicorn_log_config.json /app/docker/uvicorn_log_config.json
 RUN chmod +x /usr/local/bin/entrypoint.sh \
     && useradd --create-home --uid 1000 sentinel \
     && chown -R sentinel:sentinel /app
@@ -43,4 +44,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=4).status==200 else 1)"
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-config", "/app/docker/uvicorn_log_config.json"]

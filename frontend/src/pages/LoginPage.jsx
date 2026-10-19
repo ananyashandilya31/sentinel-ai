@@ -88,7 +88,12 @@ export default function LoginPage() {
           {submitting ? 'Authenticating…' : 'Sign in'}
         </button>
 
-        <button type="button" className="login-demo-hint" onClick={useDemo}>
+        <button
+          type="button"
+          className="login-demo-hint"
+          onClick={useDemo}
+          style={import.meta.env.DEV ? undefined : { display: 'none' }}
+        >
           <Info size={12} /> Use demo credentials (admin / admin12345)
         </button>
 

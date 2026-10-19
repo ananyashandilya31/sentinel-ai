@@ -5,13 +5,20 @@
  * distributes incoming JSON messages to subscribed listeners.
  *
  * Features:
+ *   - JWT auth: the stored token is sent as a `?token=` query parameter
+ *     (browsers cannot set headers on a WebSocket handshake)
  *   - Automatic reconnection with exponential backoff (1s → 30s max)
+ *   - Stops retrying when the server rejects the token (close code 1008)
  *   - Heartbeat (client "ping" → server "PONG") to detect dead sockets
  *   - Multiple subscribers per connection (pub/sub pattern)
  *   - Connection state tracking for UI indicators
  */
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const TOKEN_KEY = 'sentinelai_token';
+
+/** Close code the server uses to reject a bad/missing token. */
+const WS_POLICY_VIOLATION = 1008;
 
 /** Convert an http(s) base URL to its ws(s) equivalent. */
 function toWsUrl(base) {
@@ -19,11 +26,20 @@ function toWsUrl(base) {
   return url.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
 }
 
+/** Build the connection URL, attaching the stored JWT if we have one. */
+function buildUrl() {
+  const url = toWsUrl(API_BASE_URL);
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) return url;
+  return `${url}?token=${encodeURIComponent(token)}`;
+}
+
 export const WS_STATE = {
   CONNECTING: 'CONNECTING',
   OPEN: 'OPEN',
   RECONNECTING: 'RECONNECTING',
   CLOSED: 'CLOSED',
+  UNAUTHORIZED: 'UNAUTHORIZED',
 };
 
 const RECONNECT_BASE_DELAY_MS = 1000;
@@ -99,7 +115,8 @@ class LiveAlertsSocket {
 
     let socket;
     try {
-      socket = new WebSocket(this.url);
+      // Rebuild the URL each time so a refreshed token is picked up
+      socket = new WebSocket(buildUrl());
     } catch (err) {
       console.error('WebSocket constructor failed:', err);
       this._scheduleReconnect();
@@ -130,8 +147,19 @@ class LiveAlertsSocket {
       });
     };
 
-    socket.onclose = () => {
+    socket.onclose = (event) => {
       this._clearTimers();
+
+      // 1008 = policy violation → the server rejected our token.
+      // Retrying with the same token would just loop, so stop here and
+      // let the user sign in again.
+      if (event && event.code === WS_POLICY_VIOLATION) {
+        this.shouldRun = false;
+        this._setState(WS_STATE.UNAUTHORIZED);
+        console.warn('Live alert stream rejected the token — sign in again.');
+        return;
+      }
+
       if (this.shouldRun) {
         this._setState(WS_STATE.RECONNECTING);
         this._scheduleReconnect();

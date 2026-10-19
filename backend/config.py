@@ -28,6 +28,13 @@ class Settings(BaseSettings):
     LOGIN_MAX_ATTEMPTS: int = 5
     LOGIN_ATTEMPT_WINDOW_SECONDS: int = 300
 
+    # Bootstrap admin account (created on first boot / via POST /auth/seed).
+    # These are LOCAL DEVELOPMENT DEFAULTS ONLY — set them explicitly in
+    # .env for any shared or deployed environment.
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str = "admin12345"
+    ADMIN_EMAIL: str = "admin@sentinel.local"
+
     # LLM & Threat Intelligence (Phase 5 & 6 placeholders)
     LLM_PROVIDER: str = "openai"
     LLM_API_KEY: str = "mock-key"

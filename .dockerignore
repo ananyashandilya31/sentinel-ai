@@ -1,20 +1,48 @@
 # Keep build context small and secrets out of images
+
+# VCS & tooling
 .git
 .gitignore
+.github
+
+# Python
 **/__pycache__
 **/*.pyc
+**/*.pyd
 **/.pytest_cache
-**/node_modules
-frontend/dist
+**/.mypy_cache
+**/.ruff_cache
+**/*.egg-info
 backend/venv
 venv
+.venv
+tests
+
+# Node
+**/node_modules
+frontend/dist
+frontend/dist-ssr
+**/.vite
+
+# Secrets & environment — never bake these into an image
 .env
 .env.*
 !.env.example
+*.env
+.envrc
+
+# Local databases
 *.db
 *.sqlite
 *.sqlite3
-ml/models/*.joblib
-tests
-.pytest_cache
-.venv
+
+# Trained model artifacts (regenerate with ml/training/train.py)
+*.joblib
+*.pkl
+*.onnx
+*.h5
+
+# Logs & OS noise
+*.log
+.DS_Store
+Thumbs.db

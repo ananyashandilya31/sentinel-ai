@@ -629,7 +629,7 @@ Base path: `/api/v1`
 | GET | `/analytics/summary` | Dashboard counters |
 | GET | `/analytics/attacks` | Attack frequency and types |
 | GET | `/ml/predictions` | Recent anomaly scores |
-| WS | `/ws/alerts` | Live incident stream |
+| WS | `/ws/alerts` | Live incident stream (JWT via `?token=`) |
 
 FastAPI automatically provides interactive docs at `/docs`.
 
@@ -732,6 +732,8 @@ DATABASE_URL=postgresql://user:password@localhost:5432/sentinel
 JWT_SECRET=change_me
 JWT_EXPIRE_MINUTES=60
 AUTH_ENABLED=true
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin12345
 LLM_API_KEY=your_key_here
 ```
 
@@ -775,7 +777,7 @@ Dashboard: `http://localhost:5173`
 ### Run tests
 
 ```bash
-python -m pytest tests/ -v     # 95 tests
+python -m pytest tests/ -v     # 118 tests
 cd frontend && npm run build   # production bundle check
 ```
 
@@ -795,7 +797,7 @@ cd frontend && npm run build   # production bundle check
 | Frontend | Production bundle builds cleanly | Vite build |
 | Manual / E2E | Inject an attack and watch it appear live on the dashboard | Browser |
 
-**95 tests passing**, with meaningful coverage of the detection engine (the core
+**118 tests passing**, with meaningful coverage of the detection engine (the core
 of the product) and the authentication layer.
 
 ### Test isolation notes
@@ -814,21 +816,26 @@ A security tool must be secure too — this section is implemented, not aspirati
 - Passwords hashed with **bcrypt** (cost 12, per-hash salt). Over-length (>72 byte) passwords are rejected rather than silently truncated
 - JWT (HS256) with expiry, carrying only `sub` and `role` — no secrets in the token
 - **Role-based access control**: `ADMIN` can provision users, `ANALYST` can triage but not create accounts
+- **The WebSocket stream is authenticated too** — the JWT is sent as `?token=`, and a missing, invalid, expired or deactivated-user token is refused with close code `1008`. No alert data is ever delivered to a rejected socket
+- Bootstrap admin credentials come from `ADMIN_USERNAME` / `ADMIN_PASSWORD` env vars (development defaults only, with a startup warning if they're still in use)
 - Login throttling: 5 failures per client IP within a 5-minute sliding window → HTTP 429
 - Identical error message for unknown user and wrong password, so usernames can't be enumerated
 - Health and read endpoints stay open for monitoring; **write endpoints require a token**
+- **Tokens are never written to logs** — a custom uvicorn formatter strips query strings from request lines, and nginx has `access_log off` on `/ws/`
 - Input validation with Pydantic on every endpoint
 - Parameterised queries via SQLAlchemy (prevents SQL injection)
 - CORS restricted to the frontend origin; nginx adds `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`
 - Secrets only in environment variables, never in Git (`.env` is gitignored, `.dockerignore` excludes it from images)
 - Containers run as a **non-root** user
 - Minimal data sent to the LLM
+- `scripts/check_ignore_rules.py` asserts that no secret, virtualenv or model artifact can slip into the Docker build context
 
 ### Known limitations
 
 - Login throttling is **in-memory**, so it resets on restart and doesn't work across multiple replicas — Redis would be the production fix
 - JWTs can't be revoked before expiry (no denylist); short `JWT_EXPIRE_MINUTES` limits the exposure window
-- WebSocket endpoint has no auth — a production system would authenticate the upgrade handshake
+- The WebSocket token travels in the query string (browsers can't set headers on a WS handshake), so it can appear in proxy logs — mitigated here by disabling access logging on `/ws/`, but a short-lived single-use ticket would be stronger
+- A token that expires *while* a socket is open doesn't kick the client off until the next reconnect
 
 ### Authentication flow
 
@@ -950,7 +957,7 @@ Passwords are bcrypt-hashed (cost 12, salted per hash) and never stored in plain
 passlib 1.7.x is unmaintained and breaks against modern bcrypt releases (it reads a `__about__` attribute that no longer exists). I call the `bcrypt` library directly — fewer dependencies, no compatibility surprises, and the behaviour is explicit in ~10 lines I can explain.
 
 **What are the security gaps you'd fix next?**
-Three concrete ones: the login throttle is in-memory so it resets on restart and doesn't work across replicas (Redis would fix both), JWTs can't be revoked before expiry without a denylist, and the WebSocket upgrade handshake is currently unauthenticated — a real deployment would verify the token during the handshake so only authorised analysts join the alert stream.
+Three concrete ones: the login throttle is in-memory so it resets on restart and doesn't work across replicas (Redis would fix both), JWTs can't be revoked before expiry without a denylist, and the WebSocket handshake still passes the token in the query string — a stronger design would exchange the JWT for a short-lived single-use ticket so the long-lived credential never travels in a URL.
 
 **Why PostgreSQL?**
 The data is relational (users, logs, incidents, evidence) and I need strong indexing for time-range and filter queries.

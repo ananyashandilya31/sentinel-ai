@@ -11,16 +11,40 @@ from typing import Optional, Tuple
 
 from sqlalchemy.orm import Session
 
+from backend.config import settings
 from backend.models.user import User
 from backend.schemas.user import Role, UserCreate
 from backend.security import hash_password, verify_password
 
 logger = logging.getLogger(__name__)
 
-# Default bootstrap account. Password must be changed outside local dev.
-DEFAULT_ADMIN_USERNAME = "admin"
-DEFAULT_ADMIN_PASSWORD = "admin12345"
-DEFAULT_ADMIN_EMAIL = "admin@sentinel.local"
+# The literal development defaults, used only to detect that the
+# environment has not overridden them.
+_DEV_DEFAULT_USERNAME = "admin"
+_DEV_DEFAULT_PASSWORD = "admin12345"
+
+
+def _admin_username() -> str:
+    """Bootstrap admin username (ADMIN_USERNAME env var)."""
+    return settings.ADMIN_USERNAME
+
+
+def _admin_password() -> str:
+    """Bootstrap admin password (ADMIN_PASSWORD env var)."""
+    return settings.ADMIN_PASSWORD
+
+
+def _admin_email() -> str:
+    """Bootstrap admin email (ADMIN_EMAIL env var)."""
+    return settings.ADMIN_EMAIL
+
+
+def _using_default_credentials() -> bool:
+    """True when the bootstrap admin still uses the shipped dev defaults."""
+    return (
+        settings.ADMIN_USERNAME == _DEV_DEFAULT_USERNAME
+        and settings.ADMIN_PASSWORD == _DEV_DEFAULT_PASSWORD
+    )
 
 
 def get_user_by_username(db: Session, username: str) -> Optional[User]:
@@ -113,14 +137,29 @@ def ensure_default_admin(db: Session, force: bool = False) -> Optional[User]:
 
     Idempotent: a second call is a no-op unless `force` is set, in which
     case the default admin password is reset.
+
+    The credentials come from ADMIN_USERNAME / ADMIN_PASSWORD. The
+    built-in defaults are fine for local development but must be
+    overridden in a deployed environment, so we warn loudly if they are
+    still in use outside development.
     """
-    existing = get_user_by_username(db, DEFAULT_ADMIN_USERNAME)
+    if _using_default_credentials():
+        logger.warning(
+            "SECURITY WARNING: bootstrap admin '%s' is using the built-in default "
+            "password. Set ADMIN_USERNAME and ADMIN_PASSWORD in your environment.",
+            _admin_username(),
+        )
+
+    username = _admin_username()
+    password = _admin_password()
+
+    existing = get_user_by_username(db, username)
 
     if existing and not force:
         return existing
 
     if existing and force:
-        existing.password_hash = hash_password(DEFAULT_ADMIN_PASSWORD)
+        existing.password_hash = hash_password(password)
         existing.role = Role.ADMIN.value
         existing.is_active = True
         db.commit()
@@ -132,9 +171,9 @@ def ensure_default_admin(db: Session, force: bool = False) -> Optional[User]:
         return None
 
     admin = User(
-        username=DEFAULT_ADMIN_USERNAME,
-        email=DEFAULT_ADMIN_EMAIL,
-        password_hash=hash_password(DEFAULT_ADMIN_PASSWORD),
+        username=username,
+        email=_admin_email(),
+        password_hash=hash_password(password),
         role=Role.ADMIN.value,
         is_active=True,
     )
