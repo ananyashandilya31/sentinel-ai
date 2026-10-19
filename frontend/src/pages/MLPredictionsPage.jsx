@@ -85,17 +85,18 @@ export default function MLPredictionsPage() {
   const totalPages = Math.ceil(total / pageSize) || 1;
 
   return (
-    <div className="page-container">
+    <div>
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="page-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <BrainCircuit size={22} color="#38bdf8" />
-        <div>
-          <h2 className="page-title">ML Anomaly Detection</h2>
-          <p className="page-subtitle">
-            Isolation Forest · per-IP behavioural scoring
-          </p>
+      <div className="phase-banner">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div>
+            <div className="phase-title">ML Anomaly Detection</div>
+            <div className="phase-description">
+              Unsupervised Isolation Forest behavioural anomaly scoring and feature inference.
+            </div>
+          </div>
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           {/* Model status pill */}
           <span
             className={`system-status-pill ${modelReady ? 'badge-connected' : 'badge-disconnected'}`}
@@ -231,7 +232,8 @@ export default function MLPredictionsPage() {
         </div>
       ) : (
         <>
-          <table className="soc-table">
+          <div className="table-container">
+            <table className="soc-table">
             <thead>
               <tr>
                 <th>IP Address</th>
@@ -273,6 +275,7 @@ export default function MLPredictionsPage() {
               ))}
             </tbody>
           </table>
+        </div>
 
           {/* Pagination */}
           {totalPages > 1 && (

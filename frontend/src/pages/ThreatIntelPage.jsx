@@ -10,6 +10,8 @@ import {
   Activity,
   CheckCircle,
   ExternalLink,
+  ArrowLeft,
+  ArrowRight,
 } from 'lucide-react';
 import ReputationBadge from '../components/ReputationBadge';
 import RiskScoreGauge from '../components/RiskScoreGauge';
@@ -106,94 +108,86 @@ export default function ThreatIntelPage() {
   const cleanCount = records.filter((r) => r.reputation === 'CLEAN').length;
 
   return (
-    <div className="page-container">
+    <div>
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="page-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <ShieldAlert size={26} color="#f85149" />
-          <div>
-            <h2 className="page-title">Threat Intelligence Enrichment</h2>
-            <p className="page-subtitle">
-              IP Reputation · Risk Scoring · Geolocation & Autonomous System Context
-            </p>
+      <div className="phase-banner">
+        <div>
+          <div className="phase-title">Threat Intelligence</div>
+          <div className="phase-description">
+            IP reputation, risk scoring, geolocation, and autonomous system context.
           </div>
         </div>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <button
-            className="action-button secondary-button"
+            className="action-btn"
             onClick={() => handleSeed(true)}
             disabled={seeding || loading}
             title="Seed / Reset local threat database with known attack vectors"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
           >
-            <RefreshCw size={14} className={seeding ? 'spin' : ''} />
+            <RefreshCw size={14} className={seeding ? 'pulse' : ''} />
             {seeding ? 'Seeding...' : 'Reset / Seed Intel'}
           </button>
         </div>
       </div>
 
       {/* ── Metrics Cards ───────────────────────────────────────────────────── */}
-      <div className="metrics-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div className="metric-card">
-          <div className="metric-header">
-            <span className="metric-title">TOTAL TRACKED IPS</span>
-            <Database size={16} color="#8b949e" />
+      <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+        <div className="soc-card" style={{ borderLeft: '3px solid var(--accent-cyan)' }}>
+          <div className="card-header">
+            <span className="card-title">
+              <Database size={15} color="var(--accent-cyan)" /> Total Tracked IPs
+            </span>
           </div>
-          <div className="metric-value">{total}</div>
-          <div className="metric-desc">Identified in logs & threat databases</div>
+          <div className="metric-value" style={{ color: 'var(--accent-cyan)' }}>{total}</div>
+          <div className="metric-sub">Identified in logs &amp; threat databases</div>
         </div>
 
-        <div className="metric-card" style={{ borderLeft: '3px solid #f85149' }}>
-          <div className="metric-header">
-            <span className="metric-title">MALICIOUS IPS</span>
-            <AlertTriangle size={16} color="#f85149" />
+        <div className="soc-card" style={{ borderLeft: '3px solid var(--accent-red)' }}>
+          <div className="card-header">
+            <span className="card-title">
+              <AlertTriangle size={15} color="var(--accent-red)" /> Malicious IPs
+            </span>
           </div>
-          <div className="metric-value" style={{ color: '#f85149' }}>
+          <div className="metric-value" style={{ color: 'var(--accent-red)' }}>
             {maliciousCount}
           </div>
-          <div className="metric-desc">High risk attack sources (score &ge; 70)</div>
+          <div className="metric-sub">High risk attack sources (score &ge; 70)</div>
         </div>
 
-        <div className="metric-card" style={{ borderLeft: '3px solid #d29922' }}>
-          <div className="metric-header">
-            <span className="metric-title">SUSPICIOUS IPS</span>
-            <Activity size={16} color="#d29922" />
+        <div className="soc-card" style={{ borderLeft: '3px solid var(--accent-amber)' }}>
+          <div className="card-header">
+            <span className="card-title">
+              <Activity size={15} color="var(--accent-amber)" /> Suspicious IPs
+            </span>
           </div>
-          <div className="metric-value" style={{ color: '#d29922' }}>
+          <div className="metric-value" style={{ color: 'var(--accent-amber)' }}>
             {suspiciousCount}
           </div>
-          <div className="metric-desc">Tor exits, scanners, or abnormal spikes</div>
+          <div className="metric-sub">Tor exits, scanners, or abnormal spikes</div>
         </div>
 
-        <div className="metric-card" style={{ borderLeft: '3px solid #238636' }}>
-          <div className="metric-header">
-            <span className="metric-title">CLEAN / TRUSTED</span>
-            <CheckCircle size={16} color="#238636" />
+        <div className="soc-card" style={{ borderLeft: '3px solid var(--accent-green)' }}>
+          <div className="card-header">
+            <span className="card-title">
+              <CheckCircle size={15} color="var(--accent-green)" /> Clean / Trusted
+            </span>
           </div>
-          <div className="metric-value" style={{ color: '#238636' }}>
+          <div className="metric-value" style={{ color: 'var(--accent-green)' }}>
             {cleanCount}
           </div>
-          <div className="metric-desc">Internal LAN & verified public services</div>
+          <div className="metric-sub">Internal LAN &amp; verified public services</div>
         </div>
       </div>
 
-      {/* ── IP Quick Lookup & Enrichment Bar ─────────────────────────────────── */}
-      <div
-        className="card"
-        style={{
-          padding: '1.25rem',
-          backgroundColor: '#161b22',
-          border: '1px solid #30363d',
-          borderRadius: '8px',
-          marginBottom: '1.5rem',
-        }}
-      >
-        <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Search size={16} color="#58a6ff" />
-          Single IP Live Lookup & Dynamic Enrichment
-        </h3>
-        <p style={{ fontSize: '13px', color: '#8b949e', marginBottom: '1rem' }}>
+      {/* ── IP Quick Lookup & Enrichment Card ─────────────────────────────────── */}
+      <div className="soc-card" style={{ marginBottom: '1.5rem' }}>
+        <div className="card-header" style={{ marginBottom: '0.5rem' }}>
+          <span className="card-title">
+            <Search size={15} color="var(--accent-cyan)" /> Single IP Live Lookup &amp; Dynamic Enrichment
+          </span>
+        </div>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
           Enter any IP address to perform live reputation lookup or dynamic heuristic risk scoring:
         </p>
 
@@ -208,17 +202,16 @@ export default function ThreatIntelPage() {
           />
           <button
             type="submit"
-            className="action-button primary-button"
+            className="action-btn"
             disabled={lookupLoading || !lookupIpInput.trim()}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
           >
-            {lookupLoading ? <RefreshCw size={14} className="spin" /> : <Search size={14} />}
+            <Search size={14} className={lookupLoading ? 'pulse' : ''} />
             {lookupLoading ? 'Enriching...' : 'Lookup & Enrich'}
           </button>
         </form>
 
         {lookupError && (
-          <div style={{ marginTop: '0.75rem', color: '#f85149', fontSize: '13px' }}>
+          <div style={{ marginTop: '0.75rem', color: 'var(--accent-red)', fontSize: '0.85rem' }}>
             ⚠️ {lookupError}
           </div>
         )}
@@ -229,74 +222,74 @@ export default function ThreatIntelPage() {
             style={{
               marginTop: '1.25rem',
               padding: '1rem',
-              backgroundColor: '#0d1117',
-              border: '1px solid #30363d',
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border-color)',
               borderRadius: '6px',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '18px', fontWeight: 'bold', fontFamily: 'monospace', color: '#58a6ff' }}>
+                  <span style={{ fontSize: '1.1rem', fontWeight: 'bold', fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>
                     {lookupResult.ip}
                   </span>
                   <ReputationBadge reputation={lookupResult.reputation} />
                   {lookupResult.is_tor && (
-                    <span style={{ backgroundColor: '#6e40c9', color: '#fff', fontSize: '11px', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                      🧅 Tor Exit Node
+                    <span style={{ backgroundColor: 'rgba(168, 85, 247, 0.2)', border: '1px solid var(--accent-purple)', color: 'var(--accent-purple)', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                      Tor Exit Node
                     </span>
                   )}
                   {lookupResult.is_vpn && (
-                    <span style={{ backgroundColor: '#1f6feb', color: '#fff', fontSize: '11px', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                      🛡️ VPN / Proxy
+                    <span style={{ backgroundColor: 'rgba(56, 189, 248, 0.2)', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                      VPN / Proxy
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: '12px', color: '#8b949e', marginTop: '4px' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
                   Source: <code>{lookupResult.source}</code> · Total Reports: {lookupResult.total_reports} · Correlated Incidents: {lookupResult.past_incidents_count}
                 </div>
               </div>
 
               <div>
-                <span style={{ fontSize: '12px', color: '#8b949e', display: 'block', marginBottom: '4px' }}>Composite Threat Risk:</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Composite Threat Risk:</span>
                 <RiskScoreGauge score={lookupResult.risk_score} />
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', fontSize: '13px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', fontSize: '0.85rem' }}>
               <div>
-                <strong style={{ color: '#8b949e' }}>Geolocation:</strong>{' '}
+                <strong style={{ color: 'var(--text-secondary)' }}>Geolocation:</strong>{' '}
                 <span>{lookupResult.country || 'Unknown'} {lookupResult.city ? `(${lookupResult.city})` : ''}</span>
               </div>
               <div>
-                <strong style={{ color: '#8b949e' }}>ASN:</strong>{' '}
-                <span>{lookupResult.asn || 'N/A'}</span>
+                <strong style={{ color: 'var(--text-secondary)' }}>ASN:</strong>{' '}
+                <span className="mono-cell">{lookupResult.asn || 'N/A'}</span>
               </div>
               <div>
-                <strong style={{ color: '#8b949e' }}>ISP / Org:</strong>{' '}
+                <strong style={{ color: 'var(--text-secondary)' }}>ISP / Org:</strong>{' '}
                 <span>{lookupResult.isp || 'N/A'}</span>
               </div>
               <div>
-                <strong style={{ color: '#8b949e' }}>Threat Tags:</strong>{' '}
+                <strong style={{ color: 'var(--text-secondary)' }}>Threat Tags:</strong>{' '}
                 {lookupResult.threat_types && lookupResult.threat_types.length > 0 ? (
                   lookupResult.threat_types.map((tag) => (
                     <span
                       key={tag}
                       style={{
                         display: 'inline-block',
-                        fontSize: '11px',
+                        fontSize: '0.7rem',
                         backgroundColor: 'rgba(255, 255, 255, 0.08)',
                         padding: '1px 6px',
                         borderRadius: '3px',
                         marginRight: '4px',
-                        fontFamily: 'monospace',
+                        fontFamily: 'var(--font-mono)',
                       }}
                     >
                       {tag}
                     </span>
                   ))
                 ) : (
-                  <span style={{ color: '#8b949e' }}>None detected</span>
+                  <span style={{ color: 'var(--text-muted)' }}>None detected</span>
                 )}
               </div>
             </div>
@@ -312,11 +305,11 @@ export default function ThreatIntelPage() {
           gap: '1rem',
           alignItems: 'center',
           flexWrap: 'wrap',
-          marginBottom: '1rem',
+          marginBottom: '1.25rem',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <label style={{ fontSize: '13px', color: '#8b949e' }}>Reputation:</label>
+          <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Reputation:</label>
           <select
             className="filter-select"
             value={reputationFilter}
@@ -334,7 +327,7 @@ export default function ThreatIntelPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <label style={{ fontSize: '13px', color: '#8b949e' }}>Min Risk:</label>
+          <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Min Risk:</label>
           <select
             className="filter-select"
             value={minRiskFilter}
@@ -350,7 +343,7 @@ export default function ThreatIntelPage() {
           </select>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '200px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '220px' }}>
           <input
             type="text"
             className="filter-input"
@@ -367,38 +360,41 @@ export default function ThreatIntelPage() {
 
       {/* ── Error Banner ────────────────────────────────────────────────────── */}
       {error && (
-        <div className="error-banner" style={{ marginBottom: '1rem' }}>
+        <div className="alert-banner alert-error" style={{ marginBottom: '1rem' }}>
           ⚠️ {error}
         </div>
       )}
 
       {/* ── IP Reputation Table ─────────────────────────────────────────────── */}
-      <div className="table-wrapper">
-        <table className="data-table">
+      <div className="table-container">
+        <table className="soc-table">
           <thead>
             <tr>
-              <th>IP ADDRESS</th>
-              <th>REPUTATION</th>
-              <th>RISK SCORE</th>
-              <th>GEOLOCATION</th>
-              <th>ASN / ISP</th>
-              <th>THREAT TAGS</th>
-              <th>INCIDENTS</th>
-              <th>SOURCE</th>
+              <th style={{ minWidth: '150px' }}>IP Address</th>
+              <th style={{ minWidth: '120px' }}>Reputation</th>
+              <th style={{ minWidth: '120px' }}>Risk Score</th>
+              <th style={{ minWidth: '130px' }}>Geolocation</th>
+              <th style={{ minWidth: '160px' }}>ASN / ISP</th>
+              <th style={{ minWidth: '150px' }}>Threat Tags</th>
+              <th style={{ minWidth: '100px', textAlign: 'center' }}>Incidents</th>
+              <th style={{ minWidth: '100px' }}>Source</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#8b949e' }}>
-                  <RefreshCw size={20} className="spin" style={{ marginBottom: '0.5rem' }} />
-                  <div>Loading threat intelligence...</div>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '3rem' }}>
+                  <span style={{ color: 'var(--accent-cyan)' }}>Loading threat intelligence...</span>
                 </td>
               </tr>
             ) : records.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#8b949e' }}>
-                  No threat intelligence records matched your query.
+                <td colSpan={8} style={{ textAlign: 'center', padding: '3.5rem' }}>
+                  <ShieldAlert size={36} color="var(--text-muted)" style={{ marginBottom: '0.75rem' }} />
+                  <div style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>No threat intelligence records found</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                    Try adjusting your search filters or click "Reset / Seed Intel" to populate threat feeds.
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -415,9 +411,9 @@ export default function ThreatIntelPage() {
                         background: 'none',
                         border: 'none',
                         padding: 0,
-                        fontFamily: 'monospace',
+                        fontFamily: 'var(--font-mono)',
                         fontWeight: 'bold',
-                        color: '#58a6ff',
+                        color: 'var(--accent-cyan)',
                         cursor: 'pointer',
                         textAlign: 'left',
                       }}
@@ -427,12 +423,12 @@ export default function ThreatIntelPage() {
                     </button>
                     <div style={{ display: 'flex', gap: '4px', marginTop: '2px' }}>
                       {item.is_tor && (
-                        <span style={{ fontSize: '10px', backgroundColor: '#6e40c9', color: '#fff', padding: '1px 4px', borderRadius: '3px' }}>
+                        <span style={{ fontSize: '10px', backgroundColor: 'rgba(168, 85, 247, 0.2)', color: 'var(--accent-purple)', padding: '1px 4px', borderRadius: '3px', fontWeight: 600 }}>
                           Tor
                         </span>
                       )}
                       {item.is_vpn && (
-                        <span style={{ fontSize: '10px', backgroundColor: '#1f6feb', color: '#fff', padding: '1px 4px', borderRadius: '3px' }}>
+                        <span style={{ fontSize: '10px', backgroundColor: 'rgba(56, 189, 248, 0.2)', color: 'var(--accent-cyan)', padding: '1px 4px', borderRadius: '3px', fontWeight: 600 }}>
                           VPN
                         </span>
                       )}
@@ -446,17 +442,17 @@ export default function ThreatIntelPage() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Globe size={13} color="#8b949e" />
+                      <Globe size={13} color="var(--text-muted)" />
                       <span>{item.country || 'Unknown'}</span>
                     </div>
                     {item.city && (
-                      <div style={{ fontSize: '11px', color: '#8b949e' }}>{item.city}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{item.city}</div>
                     )}
                   </td>
                   <td>
-                    <div style={{ fontSize: '12px' }}>{item.isp || 'N/A'}</div>
+                    <div style={{ fontSize: '0.85rem' }}>{item.isp || 'N/A'}</div>
                     {item.asn && (
-                      <div style={{ fontSize: '11px', color: '#8b949e', fontFamily: 'monospace' }}>
+                      <div className="mono-cell" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                         {item.asn}
                       </div>
                     )}
@@ -468,11 +464,11 @@ export default function ThreatIntelPage() {
                           <span
                             key={tag}
                             style={{
-                              fontSize: '11px',
+                              fontSize: '0.7rem',
                               backgroundColor: 'rgba(255, 255, 255, 0.08)',
                               padding: '1px 6px',
                               borderRadius: '3px',
-                              fontFamily: 'monospace',
+                              fontFamily: 'var(--font-mono)',
                             }}
                           >
                             {tag}
@@ -480,21 +476,21 @@ export default function ThreatIntelPage() {
                         ))}
                       </div>
                     ) : (
-                      <span style={{ color: '#8b949e', fontSize: '12px' }}>—</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
                     )}
                   </td>
-                  <td>
+                  <td style={{ textAlign: 'center' }}>
                     <span
                       style={{
                         fontWeight: item.past_incidents_count > 0 ? 'bold' : 'normal',
-                        color: item.past_incidents_count > 0 ? '#f85149' : '#8b949e',
+                        color: item.past_incidents_count > 0 ? 'var(--accent-red)' : 'var(--text-muted)',
                       }}
                     >
                       {item.past_incidents_count}
                     </span>
                   </td>
                   <td>
-                    <span style={{ fontSize: '11px', color: '#8b949e' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       {item.source}
                     </span>
                   </td>
@@ -506,34 +502,24 @@ export default function ThreatIntelPage() {
       </div>
 
       {/* ── Pagination ──────────────────────────────────────────────────────── */}
-      <div
-        className="pagination-controls"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: '1rem',
-          fontSize: '13px',
-          color: '#8b949e',
-        }}
-      >
-        <div>
+      <div className="pagination-bar">
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
           Showing page {page} of {totalPages} ({total} total IP records)
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
-            className="action-button secondary-button"
+            className="page-btn"
             disabled={page <= 1 || loading}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
-            Previous
+            <ArrowLeft size={13} style={{ marginRight: '4px' }} /> Previous
           </button>
           <button
-            className="action-button secondary-button"
+            className="page-btn"
             disabled={page >= totalPages || loading}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           >
-            Next
+            Next <ArrowRight size={13} style={{ marginLeft: '4px' }} />
           </button>
         </div>
       </div>

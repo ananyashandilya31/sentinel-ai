@@ -118,7 +118,7 @@ export default function EventsPage() {
       {/* Top Header & Action Controls */}
       <div className="phase-banner">
         <div>
-          <div className="phase-title">Phase 2: Security Events Explorer</div>
+          <div className="phase-title">Security Logs</div>
           <div className="phase-description">
             Ingested security logs with multi-field search, event type filtering, and real-time pagination.
           </div>

@@ -901,10 +901,9 @@ code, pre {
 }
 
 .activity-bar {
-  min-width: 6px;
+  min-width: 8px;
   border-radius: 3px 3px 0 0;
-  align-self: stretch;
-  transition: flex 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 /* ─── Phase 8: Authentication ─────────────────────────────────── */

@@ -190,9 +190,9 @@ export default function IncidentsPage({ onIncidentCountChange }) {
       {/* Banner & Actions */}
       <div className="phase-banner">
         <div>
-          <div className="phase-title">Phase 3: Active Incidents & Correlation</div>
+          <div className="phase-title">Active Incidents</div>
           <div className="phase-description">
-            Detection rules (Brute Force, Port Scan, Exfiltration, Account Compromise, Privilege Escalation) with correlated evidence.
+            Correlated security incidents detected by rule-based engines and behavioral anomaly models.
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>

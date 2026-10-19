@@ -91,6 +91,7 @@ export default function App() {
 
   const isApiOnline = !!healthData;
   const isDbConnected = healthData?.database?.status === 'connected';
+  const systemHealthStatus = healthData?.status || (isApiOnline ? 'degraded' : 'error');
 
   return (
     <div className="soc-app">
@@ -98,7 +99,7 @@ export default function App() {
       <Navbar
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
-        systemStatus={{ isApiOnline, isDbConnected }}
+        systemStatus={{ isApiOnline, isDbConnected, status: systemHealthStatus, loading }}
         openIncidentsCount={openIncidentsCount}
       />
 
@@ -132,7 +133,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="soc-footer">
-        SentinelAI SOC — AI-Powered Security Operations Center • Phase 8 Auth &amp; Docker Complete
+        SentinelAI SOC — AI-Powered Security Operations Center • System Operational
       </footer>
     </div>
   );

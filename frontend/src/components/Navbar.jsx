@@ -3,19 +3,23 @@ import { Shield, Activity, FileText, AlertOctagon, BrainCircuit, ShieldAlert, La
 import { useAuth } from '../context/AuthContext';
 
 export default function Navbar({ currentTab, onSelectTab, systemStatus, openIncidentsCount = 0 }) {
-  const { isApiOnline, isDbConnected } = systemStatus;
+  const { isApiOnline, isDbConnected, status, loading } = systemStatus || {};
   const { user, logout } = useAuth();
 
-  let systemStatusText = 'OFFLINE';
+  let systemStatusText = 'SYSTEM OFFLINE';
   let systemStatusClass = 'badge-error';
   let indicatorColor = 'var(--accent-red)';
 
-  if (isApiOnline && isDbConnected) {
+  if (loading && !isApiOnline) {
+    systemStatusText = 'CHECKING...';
+    systemStatusClass = 'badge-disconnected';
+    indicatorColor = 'var(--accent-amber)';
+  } else if (isApiOnline && isDbConnected && (status === 'ok' || !status)) {
     systemStatusText = 'SYSTEM ACTIVE';
     systemStatusClass = 'badge-connected';
     indicatorColor = 'var(--accent-green)';
-  } else if (isApiOnline && !isDbConnected) {
-    systemStatusText = 'DB DISCONNECTED';
+  } else if (isApiOnline && (!isDbConnected || status === 'degraded')) {
+    systemStatusText = !isDbConnected ? 'DB DISCONNECTED' : 'SYSTEM DEGRADED';
     systemStatusClass = 'badge-disconnected';
     indicatorColor = 'var(--accent-amber)';
   }

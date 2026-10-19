@@ -18,9 +18,9 @@ export default function HealthPage({
     <div>
       <div className="phase-banner">
         <div>
-          <div className="phase-title">Phase 1: Core Foundation Status</div>
+          <div className="phase-title">System Health</div>
           <div className="phase-description">
-            FastAPI server health, PostgreSQL connection pool diagnostic, and network latency telemetry.
+            FastAPI server health, database connection pool diagnostic, and network latency telemetry.
           </div>
         </div>
         <button className="action-btn" onClick={onCheckHealth} disabled={loading}>
