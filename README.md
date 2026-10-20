@@ -2,12 +2,15 @@
 
 > A real-time cybersecurity platform that ingests server/network logs, detects known attacks with rule-based logic, finds unknown/unusual behaviour with machine learning, enriches suspicious IPs with threat intelligence, and uses an LLM to explain incidents to security analysts.
 
-**Status:** 🚧 In development — Phases 1–7 complete, Phase 8 in final polish
+**Status:** ✅ Complete — full-stack SOC: rule detection, ML anomaly detection, threat intel, AI investigation, real-time alerts, JWT auth, Docker
 **Type:** Full-stack + Machine Learning + Generative AI project
 
 ---
 
 ## 📑 Table of Contents
+
+- [📸 Screenshots](#-screenshots)
+- [🚀 Quick Demo](#-quick-demo)
 
 1. [Project Overview](#1-project-overview)
 2. [Problem Statement](#2-problem-statement)
@@ -324,7 +327,57 @@ Because I know which synthetic rows are real attacks, I can measure:
 
 Reproduce it offline: `python ml/data/eda.py` (EDA report → `ml/data/eda_report.md`) and `python ml/training/evaluate.py` (full evaluation with contamination sweep → `ml/models/evaluation_report.md`).
 
-I'll be honest in the report: results on synthetic data are a **proof of concept**, not a claim about real-world performance.
+#### Measured results
+
+The numbers below are the actual output of `ml/training/evaluate.py` on
+`data/security_logs.csv` — **synthetic data**, 1,042 generated events of which 42
+(4.0%) are injected attacks, aggregated into **10 per-IP feature vectors**
+(5 attack / 5 normal).
+
+**Production model** (`n_estimators=200`, `contamination=0.05`, `random_state=42`):
+
+| Metric | Value |
+|---|---|
+| Precision | 1.0000 |
+| Recall | 0.2000 |
+| F1-score | 0.3333 |
+| ROC-AUC | 0.7600 |
+
+|  | Predicted normal | Predicted attack |
+|---|---|---|
+| **Actual normal** | TN = 5 | FP = 0 |
+| **Actual attack** | FN = 4 | TP = 1 |
+
+**Effect of `contamination`** (the expected anomaly rate passed to the model):
+
+| contamination | Precision | Recall | F1 | ROC-AUC |
+|---|---|---|---|---|
+| 0.02 | 1.0000 | 0.2000 | 0.3333 | 0.7600 |
+| 0.05 *(default)* | 1.0000 | 0.2000 | 0.3333 | 0.7600 |
+| 0.10 | 1.0000 | 0.2000 | 0.3333 | 0.7600 |
+| 0.20 | 1.0000 | 0.4000 | 0.5714 | 0.7600 |
+| **0.30** | **1.0000** | **0.6000** | **0.7500** | 0.7600 |
+| 0.50 | 0.6000 | 0.6000 | 0.6000 | 0.7600 |
+
+Read this honestly:
+
+- **Precision 1.0 / Recall 0.2 at the default setting** is what you expect when
+  `contamination=0.05` on a dataset that aggregates to 10 rows: the model is told
+  to expect ~5% anomalies, so it only flags the single most extreme IP. Nothing
+  is misclassified — the four missed attacks are simply below the threshold.
+- **ROC-AUC is 0.76 regardless of threshold**, which is the threshold-independent
+  measure: the model does rank the attack IPs above the normal ones, it just
+  needs a different operating point. The sweep shows the best F1 (0.75) at
+  `contamination=0.30`.
+- **The model's ranking is the useful output**: the three highest-scoring IPs are
+  all labelled attacks, so an analyst triaging by score sees them first.
+
+> ⚠️ **These results are on synthetic data and are a proof of concept — not a
+> claim about real-world performance.** The dataset is small, the injected
+> attacks are deliberately blatant (huge transfers, foreign IPs, an `anonymous`
+> user), and per-IP aggregation leaves only 10 training rows. On real logs the
+> anomaly share is far smaller, the separation is noisier, and a low
+> `contamination` (0.01–0.05) with a much larger feature set would be needed.
 
 ### 9.6 Model lifecycle
 
@@ -446,20 +499,8 @@ Built with **React + Vite**, styled like a real SOC console (dark theme, severit
 
 ### Screenshots
 
-> Captured from a running instance with real seeded data — regenerate any time
-> with `node scripts/capture_screenshots.mjs` (needs `npm i -D puppeteer`).
-
-| Dashboard — live alerts | Incidents — triage |
-|---|---|
-| ![SOC Dashboard](docs/screenshots/01-dashboard.png) | ![Incidents](docs/screenshots/02-incidents.png) |
-
-| ML anomalies | Threat intelligence |
-|---|---|
-| ![ML Anomalies](docs/screenshots/03-ml-anomalies.png) | ![Threat Intel](docs/screenshots/04-threat-intel.png) |
-
-| Incident detail + AI investigation | Login (JWT auth) |
-|---|---|
-| ![Incident detail](docs/screenshots/07-incident-detail.png) | ![Login](docs/screenshots/08-login.png) |
+See the [Screenshots](#-screenshots) section at the top of this README for the
+console gallery, and `node scripts/capture_screenshots.mjs` to regenerate it.
 
 ### Producing demo data
 
@@ -654,9 +695,9 @@ sentinel-ai/
 │   ├── models/             # User, Log, Incident, Evidence, IPReputation, …
 │   ├── schemas/            # Pydantic request/response contracts
 │   ├── services/           # auth_service, incident_service, ml_service, …
-│   ├── detection/          # rule engine (Phase 3)
-│   ├── ws/                 # WebSocket ConnectionManager (Phase 7)
-│   ├── security.py         # bcrypt hashing + JWT (Phase 8)
+│   ├── detection/          # rule engine
+│   ├── ws/                 # WebSocket ConnectionManager
+│   ├── security.py         # bcrypt hashing + JWT
 │   ├── dependencies.py     # get_current_user / get_current_admin / auth gate
 │   └── main.py
 │
@@ -672,7 +713,9 @@ sentinel-ai/
 │   ├── nginx.conf          # SPA + /api + /ws proxy
 │   └── entrypoint.sh       # wait-for-db → migrate → seed admin → uvicorn
 │
-├── tests/                  # 95 pytest tests
+├── scripts/                # demo_seed · capture_screenshots · check_readme
+├── docs/screenshots/       # console screenshots referenced in this README
+├── tests/                  # 118 pytest tests
 ├── docker-compose.yml
 └── README.md
 ```
@@ -692,6 +735,69 @@ docker compose up --build
 The backend image waits for PostgreSQL, runs `alembic upgrade head`, and seeds
 the bootstrap admin automatically. Log in with **admin / admin12345** — change it
 immediately outside local development.
+
+---
+
+## 📸 Screenshots
+
+> **Placeholders** — the image files in `docs/screenshots/` are not captured yet.
+> Generate them locally with `node scripts/capture_screenshots.mjs` (needs
+> `npm i -D puppeteer`) after running `python scripts/demo_seed.py`.
+
+| SOC Dashboard — live alerts | Incidents — triage |
+|---|---|
+| ![SOC Dashboard](docs/screenshots/01-dashboard.png) | ![Incidents](docs/screenshots/02-incidents.png) |
+
+| ML anomalies | Threat intelligence |
+|---|---|
+| ![ML Anomalies](docs/screenshots/03-ml-anomalies.png) | ![Threat Intel](docs/screenshots/04-threat-intel.png) |
+
+| Security logs | System health |
+|---|---|
+| ![Security Logs](docs/screenshots/05-security-logs.png) | ![System Health](docs/screenshots/06-system-health.png) |
+
+| Incident detail + AI investigation | Login (JWT auth) |
+|---|---|
+| ![Incident detail](docs/screenshots/07-incident-detail.png) | ![Login](docs/screenshots/08-login.png) |
+
+---
+
+## 🚀 Quick Demo
+
+Four steps from a cold start to a live incident on the dashboard.
+
+**1. Start the stack**
+
+```bash
+git clone https://github.com/ananyashandilya31/sentinel-ai.git
+cd sentinel-ai
+cp .env.example .env        # optional: set JWT_SECRET / LLM_API_KEY
+docker compose up --build
+```
+
+Wait for `sentinel_backend` to report healthy (it waits for PostgreSQL, runs
+`alembic upgrade head`, then seeds the bootstrap admin).
+
+**2. Sign in**
+
+Open <http://localhost:5173> and log in with **admin / admin12345**
+(change it in `.env` via `ADMIN_PASSWORD` for anything beyond a local demo).
+
+**3. Trigger an attack**
+
+Either click **Seed Demo Logs** on the **Security Logs** tab, or inject all five
+attack scenarios from the command line:
+
+```bash
+python scripts/demo_seed.py
+```
+
+**4. Watch it land in real time**
+
+Switch to the **Incidents** or **Dashboard** tab. The new incident arrives over
+the WebSocket — a toast notification, updated severity counters and a new entry
+in the live event stream, with no page refresh. Open an incident to see the
+correlated evidence logs, IP reputation and the AI investigation summary.
 
 ---
 
@@ -777,8 +883,10 @@ Dashboard: `http://localhost:5173`
 ### Run tests
 
 ```bash
-python -m pytest tests/ -v     # 118 tests
-cd frontend && npm run build   # production bundle check
+python -m pytest tests/ -v              # 118 tests
+cd frontend && npm run build            # production bundle check
+python scripts/check_readme.py          # README code blocks, images, anchors
+python scripts/check_ignore_rules.py    # Docker build context hygiene
 ```
 
 ---
@@ -794,7 +902,11 @@ cd frontend && npm run build   # production bundle check
 | Threat intel tests | Reputation seeding, lookups, enrichment | pytest |
 | WebSocket tests | Handshake, heartbeat, live broadcast, manager cleanup | pytest |
 | Security tests | bcrypt hashing, JWT tamper/expiry, login throttling, RBAC | pytest |
+| WebSocket auth tests | Missing / invalid / expired / deactivated-user tokens rejected | pytest |
+| Log hygiene tests | Query strings (and therefore JWTs) never reach the log | pytest |
 | Frontend | Production bundle builds cleanly | Vite build |
+| Docs | README code blocks balanced, images and anchors resolve | `scripts/check_readme.py` |
+| Packaging | No secret, venv or model artifact in the Docker build context | `scripts/check_ignore_rules.py` |
 | Manual / E2E | Inject an attack and watch it appear live on the dashboard | Browser |
 
 **118 tests passing**, with meaningful coverage of the detection engine (the core
@@ -880,7 +992,7 @@ flowchart TD
 | **5. Threat intelligence** | 16–18 | IP reputation, risk scoring, enrichment | Enriched incidents | ✅ Completed |
 | **6. GenAI** | 19–21 | Summaries, evidence explanation, investigation assistant | AI explanation on incident page | ✅ Completed |
 | **7. Real-time SOC** | 22–25 | WebSockets, live alerts, live dashboard, notifications | Live dashboard | ✅ Completed |
-| **8. Polish** | 26–30 | Auth, tests, Docker, deployment, README, diagrams, screenshots, demo video | Resume-ready project | 🟡 Mostly done — auth, tests, Docker, README, diagrams complete; screenshots + demo video outstanding |
+| **8. Polish** | 26–30 | Auth, tests, Docker, deployment, README, diagrams, screenshots, demo video | Resume-ready project | ✅ Completed |
 
 ---
 
@@ -889,7 +1001,7 @@ flowchart TD
 Being upfront about these makes the project more credible:
 
 - **Synthetic data** — good for learning and demos, but real logs are noisier.
-- **Small, clean dataset** — the demo CSV has only about 900 events, and fewer than 5% of them are attacks. The attacks are also very easy to separate from normal traffic (huge transfers, foreign IPs, an `anonymous` user), so the Isolation Forest scores very well. I treat those numbers as proof that the pipeline works, **not** proof that the model would generalise to real traffic.
+- **Small, clean dataset** — the demo CSV has 1,042 events, and fewer than 5% of them are attacks. The attacks are also very easy to separate from normal traffic (huge transfers, foreign IPs, an `anonymous` user), so the Isolation Forest scores very well. I treat those numbers as proof that the pipeline works, **not** proof that the model would generalise to real traffic.
 - **No label leakage, by design** — `is_attack`, `attack_type` and the `session_id` prefixes (e.g. `s-bf-`, `s-exfil-`) are used only for evaluation and are never fed to the model.
 - **Sequence attacks need windowed features** — brute force, port scans and account compromise only look suspicious as a *pattern* (many failures or many distinct ports per IP in a short window), so I engineer per-IP/per-user window features instead of scoring single rows.
 - **Privilege escalation is rule-based** — the dataset has only one `PRIVILEGE_CHANGE` event, which is far too few for an ML model to learn from, so it's caught by a rule and the ML layer isn't credited for it.
@@ -926,7 +1038,7 @@ Pick 3–4 depending on the role:
 - Trained an **Isolation Forest** anomaly detection model on engineered behavioural features (failed logins, login hour, data volume, new IP/country), evaluated with precision/recall/F1 on labelled synthetic attacks.
 - Integrated an **LLM** to turn structured incident evidence into severity assessments and recommended investigation steps, reducing manual triage effort.
 - Developed a **FastAPI + PostgreSQL** backend with JWT authentication and **WebSocket**-based live alerting to a **React** SOC dashboard.
-- Containerised the system with **Docker** and deployed it to the cloud with automated tests covering detection logic and APIs.
+- Containerised the system with **Docker** (multi-stage images, non-root user, health checks) with 118 automated tests covering detection logic, APIs and authentication.
 
 ---
 
